@@ -23,7 +23,9 @@
         "android.permission.WAKE_LOCK",
         "android.permission.POST_NOTIFICATIONS"
       ],
-      "blockedPermissions": ["android.permission.RECORD_AUDIO"]
+      "blockedPermissions": [
+        "android.permission.RECORD_AUDIO"
+      ]
     },
     "plugins": [
       "expo-router",
@@ -53,6 +55,14 @@
           "microphonePermission": false
         }
       ]
-    ]
+    ],
+    "extra": {
+      "buildNumber": 1,
+      "router": {},
+      "eas": {
+        "projectId": "7a232217-2482-4a2d-9434-e6efc2a7f275"
+      }
+    },
+    "owner": "mehdi_he81"
   }
 }
