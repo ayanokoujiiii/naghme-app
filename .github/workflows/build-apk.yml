@@ -1,0 +1,54 @@
+name: Build Naghme APK (EAS)
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: eas-android-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  android:
+    name: Build Android APK on EAS
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Check required EAS configuration
+        shell: bash
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+          EAS_PROJECT_ID: ${{ vars.EAS_PROJECT_ID }}
+        run: |
+          if [ -z "$EXPO_TOKEN" ]; then
+            echo "::error title=Missing Expo token::Add EXPO_TOKEN as a repository Actions secret."
+            exit 1
+          fi
+          if [ -z "$EAS_PROJECT_ID" ]; then
+            echo "::error title=Missing EAS project ID::Create or link the Expo project, then add EAS_PROJECT_ID as a repository Actions variable."
+            exit 1
+          fi
+
+      - name: Set up Expo and EAS CLI
+        uses: expo/expo-github-action@v8
+        with:
+          eas-version: latest
+          token: ${{ secrets.EXPO_TOKEN }}
+
+      - name: Start Android APK build on EAS
+        env:
+          EAS_PROJECT_ID: ${{ vars.EAS_PROJECT_ID }}
+          BUILD_NUMBER: ${{ github.run_number }}
+        run: eas build --platform android --profile preview --non-interactive --no-wait

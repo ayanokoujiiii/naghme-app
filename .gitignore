@@ -25,23 +25,23 @@ coverage
 # nyc test coverage
 .nyc_output
 
-# Grunt intermediate storage (https://gruntjs.com/creating-plugins#storing-task-files)
+# Grunt intermediate storage
 .grunt
 
-# Bower dependency directory (https://bower.io/)
+# Bower dependency directory
 bower_components
 
 # node-waf configuration
 .lock-wscript
 
-# Compiled binary addons (https://nodejs.org/api/addons.html)
+# Compiled binary addons
 build/Release
 
 # Dependency directories
 node_modules/
 jspm_packages/
 
-# Snowpack dependency directory (https://snowpack.dev/)
+# Snowpack dependency directory
 web_modules/
 
 # TypeScript cache
@@ -59,7 +59,7 @@ web_modules/
 # Optional REPL history
 .node_repl_history
 
-# Output of 'npm pack'
+# Output of npm pack
 *.tgz
 
 # Yarn Integrity file
@@ -70,7 +70,7 @@ web_modules/
 .env.*
 !.env.example
 
-# parcel-bundler cache (https://parceljs.org/)
+# JavaScript build caches
 .cache
 .parcel-cache
 
@@ -83,25 +83,18 @@ out
 dist
 .output
 
-# Gatsby files
+# Gatsby cache
 .cache/
-# Comment in the public line in if your project uses Gatsby and not Next.js
-# https://nextjs.org/blog/next-9-1#public-directory-support
-# public
 
 # vuepress build output
 .vuepress/dist
-
-# vuepress v2.x temp directory
 .temp
 
-# Sveltekit cache directory
+# SvelteKit cache
 .svelte-kit/
 
-# vitepress build output
+# VitePress output
 **/.vitepress/dist
-
-# vitepress cache directory
 **/.vitepress/cache
 
 # Docusaurus cache and generated files
@@ -122,13 +115,13 @@ dist
 # TernJS port file
 .tern-port
 
-# Stores VSCode versions used for testing VSCode extensions
+# VS Code extension test versions
 .vscode-test
 
 # pnpm
 .pnpm-store
 
-# yarn v3
+# Yarn v3
 .pnp.*
 .yarn/*
 !.yarn/patches
@@ -141,3 +134,15 @@ dist
 vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
 .vite/
+
+# Expo and native Android build output
+.expo/
+android/
+ios/
+dist/
+
+# Generated installation packages and signing credentials
+*.apk
+*.jks
+*.keystore
+*.p8
