@@ -26,6 +26,9 @@ jobs:
           node-version: 22
           cache: npm
 
+      - name: Install project dependencies
+        run: npm ci
+
       - name: Check required EAS configuration
         shell: bash
         env:
