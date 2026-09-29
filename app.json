@@ -25,7 +25,10 @@
       ],
       "blockedPermissions": [
         "android.permission.RECORD_AUDIO"
-      ]
+      ],
+      "targetSdkVersion": 35,
+      "compileSdkVersion": 35,
+      "minSdkVersion": 24
     },
     "plugins": [
       "expo-router",

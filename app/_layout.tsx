@@ -37,18 +37,41 @@ export default function RootLayout() {
   useEffect(() => {
     (async () => {
       try {
+        console.log('[Naghme] Starting initialization...');
+
+        console.log('[Naghme] Opening database...');
         await getDb();
-        if (!(await getSetting('seeded'))) {
+        console.log('[Naghme] Database opened successfully');
+
+        const isSeeded = await getSetting('seeded');
+        if (!isSeeded) {
+          console.log('[Naghme] Seeding database with starter data...');
           await seedStarter();
           await setSetting('seeded', '1');
+          console.log('[Naghme] Database seeded');
         }
+
+        console.log('[Naghme] Restoring language preference...');
         const lang = await getSetting('lang');
         if (lang === 'en') setLangNow('en');
+        console.log('[Naghme] Language set to:', lang || 'fa');
+
+        console.log('[Naghme] Restoring player state...');
         await restorePlayer();
+        console.log('[Naghme] Player restored');
+
+        console.log('[Naghme] Starting mood clock...');
         startMoodClock();
+        console.log('[Naghme] Mood clock started');
+
+        console.log('[Naghme] Initialization complete');
         setReady(true);
       } catch (e: any) {
-        setError(e?.message ?? 'باز کردن آرشیو ممکن نشد.');
+        console.error('[Naghme] Initialization error:', e);
+        console.error('[Naghme] Stack trace:', e?.stack);
+        const msg = e?.message ?? 'باز کردن آرشیو ممکن نشد.';
+        console.error('[Naghme] Setting error:', msg);
+        setError(msg);
       }
     })();
   }, []);
