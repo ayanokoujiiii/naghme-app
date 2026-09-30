@@ -1,24 +1,39 @@
+import { AVAZ_LIST, DASTGAH_LIST } from './radif';
+
 export const C = {
-  bg: '#0B0B0C',
-  bg2: '#111113',
-  bg3: '#17171A',
-  surface: 'rgba(255,255,255,0.045)',
-  surface2: 'rgba(255,255,255,0.08)',
-  line: 'rgba(255,255,255,0.08)',
-  lineStrong: 'rgba(255,255,255,0.16)',
-  text: '#ECE8E1',
-  dim: '#A7A29A',
-  faint: '#6F6B65',
-  accent: '#D6C8B2',
+  bg: '#0A0908',
+  bg2: '#12100E',
+  bg3: '#1A1714',
+  // v1.1: every surface, line and secondary text is brighter so the app reads
+  // well in low light and in daylight.
+  surface: 'rgba(255,240,220,0.07)',
+  surface2: 'rgba(255,240,220,0.12)',
+  line: 'rgba(230,200,150,0.18)',
+  lineStrong: 'rgba(230,200,150,0.32)',
+  text: '#F5F0E8',
+  dim: '#C9C1B4',
+  faint: '#948B7E',
+  accent: '#E6D3B3',
   /** زر: the old gold-amber of lace, termeh and lamplight. Used for ornaments. */
-  zar: '#D2A15F',
-  zarSoft: 'rgba(210,161,95,0.16)',
-  zarDeep: '#9E6F35',
-  accentSoft: 'rgba(214,200,178,0.14)',
-  persian: '#CDB68C',
-  classical: '#A9BCCB',
-  other: '#BDB4CC',
-  danger: '#D48A7E',
+  zar: '#E0A95A',
+  zarBright: '#F4C27A',
+  zarSoft: 'rgba(224,169,90,0.22)',
+  zarDeep: '#A8712F',
+  /** نارنجی: the orange of pomegranate and sunset, used next to gold. */
+  narenj: '#E57A3C',
+  /** فیروزه: turquoise tiles, a cool counterpoint to gold. */
+  firouzeh: '#4FB3A9',
+  /** لاجورد: lapis blue of miniature skies. */
+  lajvard: '#5B7FD0',
+  /** لاکی: deep lacquer red of termeh grounds. */
+  laki: '#B8433A',
+  /** نقره: silver thread. */
+  noghre: '#D9DEE3',
+  accentSoft: 'rgba(230,211,179,0.18)',
+  persian: '#E0C088',
+  classical: '#B3C8DA',
+  other: '#C9BFDA',
+  danger: '#EE8F80',
   black: '#000000',
 };
 
@@ -80,8 +95,9 @@ export function relationLabel(kind: string, outgoing: boolean): string {
   return outgoing ? k.label : k.reverse;
 }
 
-export const DASTGAHS = ['شور', 'ماهور', 'همایون', 'سه‌گاه', 'چهارگاه', 'نوا', 'راست‌پنجگاه'];
-export const AVAZES = ['ابوعطا', 'بیات ترک', 'افشاری', 'دشتی', 'اصفهان', 'بیات کرد'];
-export const PERSIAN_FORMS = ['تصنیف', 'آواز', 'ضربی', 'چهارمضراب', 'پیش‌درآمد', 'رِنگ', 'تک‌نوازی'];
+/** 7 dastgahs and their avazes: see src/radif.ts for the full tree with gushes. */
+export const DASTGAHS = DASTGAH_LIST;
+export const AVAZES = AVAZ_LIST;
+export const PERSIAN_FORMS = ['پیش‌درآمد', 'چهارمضراب', 'آواز', 'تصنیف', 'رِنگ', 'ضربی', 'تک‌نوازی', 'ساز و آواز', 'سرود'];
 export const CLASSICAL_FORMS = ['سمفونی', 'سونات', 'کنسرتو', 'کوارتت', 'نوکتورن', 'اتود', 'والس', 'پرلود', 'اپرا', 'سوئیت'];
 export const MOODS = ['آرام', 'دلتنگ', 'غمگین', 'شاد', 'پرشور', 'متفکر', 'عاشقانه'];

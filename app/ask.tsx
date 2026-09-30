@@ -25,8 +25,14 @@ async function buildContext(): Promise<string> {
   return `هنرمندان:\n${a || '—'}\n\nآثار:\n${w || '—'}\n\nاخیراً شنیده:\n${r || '—'}`;
 }
 
-export default function AskScreen() {
+export default function AskRoute() {
+  return <AskScreen />;
+}
+
+/** The chat. Used as a page (/ask) and, since v1.1, as the fourth main tab. */
+export function AskScreen({ inTab = false }: { inTab?: boolean }) {
   const insets = useSafeAreaInsets();
+  const bottomGap = inTab ? Math.max(insets.bottom, 12) + 6 + 64 + 14 : insets.bottom + 10;
   const [msgs, setMsgs] = useState<ChatMsg[]>([]);
   const [text, setText] = useState('');
   const [busy, setBusy] = useState(false);
@@ -72,7 +78,7 @@ export default function AskScreen() {
   return (
     <KeyboardAvoidingView style={{ flex: 1 }} behavior="padding">
       <Ambient intensity={0.9} />
-      <Header title="همراه نغمه" subtitle="پرسیدن دربارهٔ موسیقی و آرشیوت" right={msgs.length ? <IconBtn name="plus" onPress={newConv} label="گفت‌وگوی تازه" /> : <IconBtn name="settings" onPress={() => router.push('/settings')} />} />
+      <Header back={!inTab} title="همراه نغمه" subtitle="پرسیدن دربارهٔ موسیقی و آرشیوت" right={msgs.length ? <IconBtn name="plus" onPress={newConv} label="گفت‌وگوی تازه" /> : <IconBtn name="settings" onPress={() => router.push('/settings')} />} />
       <ScrollView ref={scroll} contentContainerStyle={{ padding: 16, paddingBottom: 20 }} keyboardShouldPersistTaps="handled">
         {!msgs.length ? (
           <Animated.View entering={FadeInUp.duration(500)} style={{ paddingTop: 30, alignItems: 'center' }}>
@@ -113,14 +119,14 @@ export default function AskScreen() {
           </Pressy>
         ) : null}
       </ScrollView>
-      <View style={[row, { paddingHorizontal: 12, paddingTop: 8, paddingBottom: insets.bottom + 10, gap: 8, borderTopWidth: 0.5, borderColor: C.line }]}>
+      <View style={[row, { paddingHorizontal: 12, paddingTop: 8, paddingBottom: bottomGap, gap: 8, borderTopWidth: 0.5, borderColor: C.line }]}>
         <TextInput
           value={text}
           onChangeText={setText}
           placeholder={tr("بپرس…")}
           placeholderTextColor={C.faint}
           multiline
-          style={{ flex: 1, maxHeight: 120, minHeight: 46, borderRadius: 23, paddingHorizontal: 16, paddingVertical: 10, backgroundColor: C.surface, color: C.text, fontFamily: F.regular, fontSize: 14.5, textAlign: 'right', writingDirection: 'rtl' }}
+          style={{ flex: 1, maxHeight: 120, minHeight: 46, borderRadius: 23, paddingHorizontal: 16, paddingVertical: 10, backgroundColor: C.surface, color: C.text, fontFamily: F.regular, fontSize: 16, textAlign: 'right', writingDirection: 'rtl' }}
         />
         <IconBtn name="send" filled onPress={() => send()} label="ارسال" style={{ transform: [{ scaleX: -1 }] }} />
       </View>

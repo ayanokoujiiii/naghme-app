@@ -24,8 +24,8 @@ import { unravel } from '@/src/ui/Unravel';
 function Action({ icon, label, onPress, danger }: { icon: any; label: string; onPress: () => void; danger?: boolean }) {
   return (
     <Pressy onPress={onPress} scaleTo={0.98} style={[row, { paddingHorizontal: 24, paddingVertical: 13 }]}>
-      <Feather name={icon} size={18} color={danger ? C.danger : C.dim} />
-      <Txt v="h3" color={danger ? C.danger : C.text} style={{ marginRight: 16, fontSize: 14.5 }}>{label}</Txt>
+      <Feather name={icon} size={19} color={danger ? C.danger : C.zar} />
+      <Txt v="h3" color={danger ? C.danger : C.text} style={{ marginRight: 16, fontSize: 16 }}>{label}</Txt>
     </Pressy>
   );
 }
@@ -74,7 +74,7 @@ export default function RecordingSheet() {
 
   return (
     <Sheet>
-      <ScrollView>
+      <ScrollView style={{ flexShrink: 1 }} contentContainerStyle={{ paddingBottom: 8 }} showsVerticalScrollIndicator>
         <View style={[row, { paddingHorizontal: 22, paddingBottom: 14 }]}>
           <Cover uri={recCover(r)} size={58} radius={14} seed={r.id} />
           <View style={{ flex: 1, marginRight: 14 }}>
@@ -95,7 +95,10 @@ export default function RecordingSheet() {
         <Action icon="image" label="ساختن کارت‌پستال" onPress={() => { router.back(); router.push({ pathname: '/postcard', params: { rec: r.id } }); }} />
         <Action icon="edit-2" label="ویرایش اطلاعات و متن" onPress={() => { router.back(); router.push({ pathname: '/edit/recording', params: { id: r.id } }); }} />
         {r.workId ? <Action icon="feather" label={`اثر: ${r.workTitle ?? ''}`} onPress={() => { router.back(); router.push(`/work/${r.workId}`); }} /> : null}
-        {r.albumId ? <Action icon="disc" label={`آلبوم: ${r.albumTitle ?? ''}`} onPress={() => { router.back(); router.push(`/album/${r.albumId}`); }} /> : null}
+        {r.albumId ? <Action icon="disc" label={`آلبوم: ${r.albumTitle ?? ''}`} onPress={() => { router.back(); router.push(`/album/${r.albumId}`); }} /> : (
+          <Action icon="disc" label="افزودن به آلبوم" onPress={() => { router.back(); router.push({ pathname: '/edit/recording', params: { id: r.id } }); }} />
+        )}
+        {!r.workId ? <Action icon="feather" label="وصل کردن به یک اثر" onPress={() => { router.back(); router.push({ pathname: '/edit/recording', params: { id: r.id } }); }} /> : null}
         <Action icon="list" label="افزودن به مجموعه" onPress={() => setShowCols((v) => !v)} />
         {showCols ? (
           <Animated.View entering={FadeInDown} style={{ paddingHorizontal: 24, paddingBottom: 8 }}>

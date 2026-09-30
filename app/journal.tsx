@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { TermehProvider } from '@/src/motifs/Termeh';
 import { Alert, KeyboardAvoidingView, ScrollView, TextInput, View } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import Animated, { FadeInDown, FadeOut, LinearTransition } from 'react-native-reanimated';
@@ -36,6 +37,7 @@ export default function JournalScreen() {
   };
 
   return (
+    <TermehProvider pattern="ab">
     <KeyboardAvoidingView style={{ flex: 1 }} behavior="padding">
       <Ambient intensity={0.6} />
       <Header title="یادداشت‌ها" subtitle={ctx.data ?? 'دفتر شنیدن'} right={!open ? <IconBtn name="plus" onPress={() => setOpen(true)} /> : undefined} />
@@ -50,7 +52,7 @@ export default function JournalScreen() {
                 multiline
                 placeholder={tr("این شنیدن چه حسی داشت؟")}
                 placeholderTextColor={C.faint}
-                style={{ minHeight: 120, color: C.text, fontFamily: F.regular, fontSize: 15, lineHeight: 28, textAlign: 'right', writingDirection: 'rtl', textAlignVertical: 'top' }}
+                style={{ minHeight: 120, color: C.text, fontFamily: F.regular, fontSize: 16.5, lineHeight: 28, textAlign: 'right', writingDirection: 'rtl', textAlignVertical: 'top' }}
               />
               <View style={[row, { flexWrap: 'wrap', gap: 8, marginTop: 10 }]}>
                 {MOODS.map((m) => <Chip key={m} label={m} active={mood === m} onPress={() => setMood(mood === m ? null : m)} />)}
@@ -83,5 +85,6 @@ export default function JournalScreen() {
         {list.data?.length ? <Txt v="caption" center style={{ marginTop: 14 }}>برای حذف، روی یادداشت نگه دار.</Txt> : null}
       </ScrollView>
     </KeyboardAvoidingView>
+    </TermehProvider>
   );
 }

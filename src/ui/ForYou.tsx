@@ -37,7 +37,7 @@ export function ForYou() {
                   <Txt v="caption" color={C.zar} numberOfLines={1}>{item.reason}</Txt>
                 </View>
               </View>
-              <Txt v="h3" numberOfLines={1} center style={{ marginTop: 8, fontSize: 13.5 }}>{item.rec.title}</Txt>
+              <Txt v="h3" numberOfLines={1} center style={{ marginTop: 8, fontSize: 15 }}>{item.rec.title}</Txt>
               <Txt v="caption" numberOfLines={1} center>{recArtistLine(item.rec)}</Txt>
             </Pressy>
           </Animated.View>

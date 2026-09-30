@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { TermehProvider } from '@/src/motifs/Termeh';
 import { Alert, ScrollView, StyleSheet, View, useWindowDimensions } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { Image } from 'expo-image';
@@ -43,6 +44,7 @@ export default function WorkScreen() {
     ]);
 
   return (
+    <TermehProvider pattern="gol">
     <View style={{ flex: 1, backgroundColor: C.bg }}>
       {work.poster ? <Image source={{ uri: work.poster }} style={[StyleSheet.absoluteFill, { opacity: 0.5 }]} blurRadius={50} contentFit="cover" /> : null}
       <LinearGradient colors={[`${tint}22`, C.bg]} locations={[0, 0.55]} style={StyleSheet.absoluteFill} />
@@ -108,7 +110,7 @@ export default function WorkScreen() {
                     ))}
                   </View>
                 ) : null}
-                {work.sheetText ? <Txt v="body" left style={{ marginTop: sheets.length ? 16 : 0, fontSize: 13.5, lineHeight: 24 }}>{work.sheetText}</Txt> : null}
+                {work.sheetText ? <Txt v="body" left style={{ marginTop: sheets.length ? 16 : 0, fontSize: 15, lineHeight: 24 }}>{work.sheetText}</Txt> : null}
                 {!sheets.length && !work.sheetText ? <Txt v="small" center>تصویر نت یا نت‌نویسی متنی را از ویرایش اثر اضافه کن.</Txt> : null}
               </>
             ) : (
@@ -132,6 +134,7 @@ export default function WorkScreen() {
       </ScrollView>
       <LaceCurtain delay={80} />
     </View>
+    </TermehProvider>
   );
 }
 

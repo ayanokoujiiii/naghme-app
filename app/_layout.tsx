@@ -18,12 +18,14 @@ import { C } from '@/src/theme';
 import { Txt } from '@/src/ui/Txt';
 import { overlayOptions, pageOptions, riseOptions, tabsOptions } from '@/src/ui/transitions';
 import { UnravelHost } from '@/src/ui/Unravel';
+import { ErrorBoundary, ErrorToast, installGlobalErrorHandler } from '@/src/ui/SafetyNet';
 import { startMoodClock } from '@/src/mood';
 import { setLangNow, useLang } from '@/src/i18n';
 
 // A JavaScript stack so every screen change can be choreographed (page turns, rising player).
 const Stack = withLayoutContext(createStackNavigator().Navigator) as any;
 
+installGlobalErrorHandler();
 void SplashScreen.preventAutoHideAsync().catch(() => undefined);
 void SystemUI.setBackgroundColorAsync(C.bg).catch(() => undefined);
 
@@ -31,47 +33,26 @@ export default function RootLayout() {
   const [fonts] = useFonts({ Vazirmatn_300Light, Vazirmatn_400Regular, Vazirmatn_500Medium, Vazirmatn_700Bold, Lalezar_400Regular, NotoNastaliqUrdu_400Regular });
   const [ready, setReady] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  // Changing the language rebuilds every screen so all text follows at once.
-  const lang = useLang((s) => s.lang);
+  // v1.1: changing the language no longer rebuilds the navigator (that reset the
+  // screen history, so the next «back» closed the app). Every text follows the
+  // language live instead.
+  useLang((s) => s.lang);
 
   useEffect(() => {
     (async () => {
       try {
-        console.log('[Naghme] Starting initialization...');
-
-        console.log('[Naghme] Opening database...');
         await getDb();
-        console.log('[Naghme] Database opened successfully');
-
-        const isSeeded = await getSetting('seeded');
-        if (!isSeeded) {
-          console.log('[Naghme] Seeding database with starter data...');
+        if (!(await getSetting('seeded'))) {
           await seedStarter();
           await setSetting('seeded', '1');
-          console.log('[Naghme] Database seeded');
         }
-
-        console.log('[Naghme] Restoring language preference...');
         const lang = await getSetting('lang');
         if (lang === 'en') setLangNow('en');
-        console.log('[Naghme] Language set to:', lang || 'fa');
-
-        console.log('[Naghme] Restoring player state...');
         await restorePlayer();
-        console.log('[Naghme] Player restored');
-
-        console.log('[Naghme] Starting mood clock...');
         startMoodClock();
-        console.log('[Naghme] Mood clock started');
-
-        console.log('[Naghme] Initialization complete');
         setReady(true);
       } catch (e: any) {
-        console.error('[Naghme] Initialization error:', e);
-        console.error('[Naghme] Stack trace:', e?.stack);
-        const msg = e?.message ?? 'باز کردن آرشیو ممکن نشد.';
-        console.error('[Naghme] Setting error:', msg);
-        setError(msg);
+        setError(e?.message ?? 'باز کردن آرشیو ممکن نشد.');
       }
     })();
   }, []);
@@ -94,14 +75,17 @@ export default function RootLayout() {
     <GestureHandlerRootView style={{ flex: 1, backgroundColor: C.bg }}>
       <SafeAreaProvider>
         <StatusBar style="light" />
-        <Stack key={lang} screenOptions={pageOptions}>
+        <ErrorBoundary>
+        <Stack screenOptions={pageOptions} screenLayout={({ children }: { children: React.ReactNode }) => <ErrorBoundary>{children}</ErrorBoundary>}>
           <Stack.Screen name="(tabs)" options={tabsOptions} />
           <Stack.Screen name="player" options={riseOptions} />
           <Stack.Screen name="add" options={overlayOptions} />
           <Stack.Screen name="recording/[id]" options={overlayOptions} />
           <Stack.Screen name="viewer" options={overlayOptions} />
         </Stack>
+        </ErrorBoundary>
         <UnravelHost />
+        <ErrorToast />
       </SafeAreaProvider>
     </GestureHandlerRootView>
   );

@@ -164,7 +164,7 @@ export default function Listen() {
                 <Animated.View entering={FadeInDown.delay(index * 40).duration(420)} style={{ width: tile }}>
                   <Pressy onPress={() => playRows(recent.data!, item.id)} scaleTo={0.96}>
                     <Cover uri={recCover(item)} size={tile} radius={18} seed={item.id} />
-                    <Txt v="h3" numberOfLines={1} style={{ marginTop: 8, fontSize: 13.5 }}>{item.title}</Txt>
+                    <Txt v="h3" numberOfLines={1} style={{ marginTop: 8, fontSize: 15 }}>{item.title}</Txt>
                     <Txt v="caption" numberOfLines={1}>{recArtistLine(item)}</Txt>
                   </Pressy>
                 </Animated.View>
@@ -246,7 +246,7 @@ export default function Listen() {
 }
 
 const styles = StyleSheet.create({
-  verse: { fontFamily: F.nastaliq, fontSize: 16, lineHeight: 46, color: C.text },
+  verse: { fontFamily: F.nastaliq, fontSize: 17.5, lineHeight: 46, color: C.text },
   playBig: { marginTop: 16, width: 50, height: 50, borderRadius: 25, backgroundColor: C.accent, alignItems: 'center', justifyContent: 'center', alignSelf: 'flex-end' },
   favPill: { backgroundColor: C.surface, borderRadius: 999, padding: 5, paddingLeft: 14, borderWidth: StyleSheet.hairlineWidth, borderColor: C.line },
 });

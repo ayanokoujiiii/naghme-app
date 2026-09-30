@@ -4,7 +4,6 @@ import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import Animated, { FadeIn, FadeInDown, FadeInUp, FadeOut, FadeOutDown } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { BlurView } from 'expo-blur';
 import { C, F, relationLabel, traditionColor, traditionLabel } from '@/src/theme';
 import { Txt } from '@/src/ui/Txt';
 import { Chip, IconBtn, Pressy, row, Button, Badge, tap } from '@/src/ui/kit';
@@ -106,7 +105,7 @@ export default function Galaxy() {
         </View>
         {searching ? (
           <Animated.View entering={FadeInDown.duration(300)} exiting={FadeOut} style={{ paddingHorizontal: 18, marginTop: 10 }}>
-            <BlurView intensity={40} tint="dark" style={styles.searchBox}>
+            <View style={styles.searchBox}>
               <View style={[row, { paddingHorizontal: 14, height: 46 }]}>
                 <Feather name="search" size={16} color={C.faint} />
                 <TextInput autoFocus value={q} onChangeText={setQ} placeholder={tr("نام هنرمند…")} placeholderTextColor={C.faint} style={styles.input} />
@@ -117,7 +116,7 @@ export default function Galaxy() {
                   <Txt v="small" color={C.text} style={{ marginRight: 10 }}>{n.name}</Txt>
                 </Pressy>
               ))}
-            </BlurView>
+            </View>
           </Animated.View>
         ) : (
           <Animated.View entering={FadeIn.delay(700)} style={[row, { gap: 8, paddingHorizontal: 18, marginTop: 12 }]}>
@@ -136,20 +135,20 @@ export default function Galaxy() {
 
       {empty ? (
         <Animated.View entering={FadeInUp.delay(800)} style={[styles.card, { bottom: insets.bottom + 100 }]}>
-          <BlurView intensity={40} tint="dark" style={styles.cardInner}>
+          <View style={styles.cardInner}>
             <Txt v="h2">کهکشانت هنوز خالی است</Txt>
             <Txt v="small" style={{ marginTop: 4 }}>هر هنرمندی که اضافه کنی، ستاره‌ای می‌شود و پیوندها صورت فلکی می‌سازند.</Txt>
             <View style={[row, { gap: 10, marginTop: 14 }]}>
               <Button label="افزودن هنرمند" icon="plus" onPress={() => router.push('/edit/artist')} />
               <Button label="ستاره‌های نمونه" kind="ghost" onPress={() => void seedStarter()} />
             </View>
-          </BlurView>
+          </View>
         </Animated.View>
       ) : null}
 
       {node ? (
         <Animated.View key={node.id} entering={FadeInDown.springify().damping(17)} exiting={FadeOutDown.duration(250)} style={[styles.card, { bottom: insets.bottom + 96 }]}>
-          <BlurView intensity={45} tint="dark" experimentalBlurMethod="dimezisBlurView" style={styles.cardInner}>
+          <View style={styles.cardInner}>
             <View style={[row]}>
               <Avatar uri={node.photo} name={node.name} size={58} ring={node.color} />
               <View style={{ flex: 1, marginRight: 14 }}>
@@ -180,7 +179,7 @@ export default function Galaxy() {
               <Button label="صفحهٔ هنرمند" icon="user" onPress={() => router.push(`/artist/${node.id}`)} style={{ flex: 1 }} />
               <Button label="پخش" icon="play" kind="ghost" onPress={() => void playArtist(node.id)} />
             </View>
-          </BlurView>
+          </View>
         </Animated.View>
       ) : null}
     </View>
@@ -191,9 +190,9 @@ const styles = StyleSheet.create({
   top: { position: 'absolute', top: 0, left: 0, right: 0 },
   hint: { position: 'absolute', left: 30, right: 30 },
   card: { position: 'absolute', left: 14, right: 14 },
-  cardInner: { borderRadius: 26, overflow: 'hidden', padding: 18, backgroundColor: 'rgba(16,15,15,0.7)', borderWidth: StyleSheet.hairlineWidth, borderColor: C.lineStrong },
-  searchBox: { borderRadius: 18, overflow: 'hidden', backgroundColor: 'rgba(16,15,15,0.75)', borderWidth: StyleSheet.hairlineWidth, borderColor: C.lineStrong, paddingBottom: 6 },
-  input: { flex: 1, color: C.text, fontFamily: F.regular, fontSize: 14, textAlign: 'right', marginRight: 10 },
+  cardInner: { borderRadius: 26, overflow: 'hidden', padding: 18, backgroundColor: 'rgba(18,16,14,0.94)', borderWidth: StyleSheet.hairlineWidth, borderColor: C.lineStrong },
+  searchBox: { borderRadius: 18, overflow: 'hidden', backgroundColor: 'rgba(18,16,14,0.96)', borderWidth: StyleSheet.hairlineWidth, borderColor: C.lineStrong, paddingBottom: 6 },
+  input: { flex: 1, color: C.text, fontFamily: F.regular, fontSize: 15.5, textAlign: 'right', marginRight: 10 },
   dot: { width: 8, height: 8, borderRadius: 4 },
   nb: { backgroundColor: 'rgba(255,255,255,0.06)', borderRadius: 999, paddingHorizontal: 12, height: 34 },
 });

@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { TermehProvider } from '@/src/motifs/Termeh';
 import { Alert, ScrollView, StyleSheet, View, useWindowDimensions } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { Image } from 'expo-image';
@@ -64,6 +65,7 @@ export default function ArtistScreen() {
     ]);
 
   return (
+    <TermehProvider pattern="sarv">
     <View style={{ flex: 1, backgroundColor: C.bg }}>
       <Animated.View style={[{ position: 'absolute', top: 0, left: 0, right: 0, height: HERO }, heroStyle]}>
         {heroImg ? <Image source={{ uri: heroImg }} style={StyleSheet.absoluteFill} contentFit="cover" transition={500} /> : (
@@ -213,6 +215,7 @@ export default function ArtistScreen() {
       </View>
       <LaceCurtain />
     </View>
+    </TermehProvider>
   );
 }
 

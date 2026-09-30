@@ -45,7 +45,7 @@ export function VitrineCard({ children, width, index = 0 }: { children: React.Re
       {/* plinth and museum label */}
       <View style={styles.plinth}>
         <View style={styles.goldLine} />
-        <Txt v="caption" center color={C.zar} style={{ fontFamily: F.medium, fontSize: 9.5, letterSpacing: 1 }}>{`شیء ${toFa(String(index + 1).padStart(4, '0'))}`}</Txt>
+        <Txt v="caption" center color={C.zar} style={{ fontFamily: F.medium, fontSize: 10.5, letterSpacing: 1 }}>{`شیء ${toFa(String(index + 1).padStart(4, '0'))}`}</Txt>
       </View>
       <View style={styles.shadow} />
     </View>

@@ -123,7 +123,7 @@ export function ArtistPicker({ artists, onPick, placeholder = 'نام هنرمن
     <View>
       <View style={[row, styles.input, { paddingHorizontal: 12 }]}>
         <Feather name="user-plus" size={16} color={C.faint} />
-        <TextInput value={q} onChangeText={setQ} placeholder={tr(placeholder)} placeholderTextColor={C.faint} style={{ flex: 1, color: C.text, fontFamily: F.regular, fontSize: 14, textAlign: 'right', marginRight: 10 }} />
+        <TextInput value={q} onChangeText={setQ} placeholder={tr(placeholder)} placeholderTextColor={C.faint} style={{ flex: 1, color: C.text, fontFamily: F.regular, fontSize: 15.5, textAlign: 'right', marginRight: 10 }} />
       </View>
       {list.map((a) => (
         <Animated.View key={a.id} entering={FadeInDown.duration(200)}>
@@ -162,7 +162,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     color: C.text,
     fontFamily: F.regular,
-    fontSize: 14.5,
+    fontSize: 16,
   },
   imgEmpty: { backgroundColor: 'rgba(255,255,255,0.04)', borderWidth: 1, borderStyle: 'dashed', borderColor: C.accentSoft, alignItems: 'center', justifyContent: 'center' },
   section: { marginHorizontal: 16, marginBottom: 16, padding: 18, borderRadius: 24, backgroundColor: 'rgba(255,255,255,0.03)', borderWidth: StyleSheet.hairlineWidth, borderColor: C.line },

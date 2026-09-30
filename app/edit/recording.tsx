@@ -46,7 +46,7 @@ function LinkPicker({ label, icon, items, value, onChange }: {
       <Txt v="label" color={C.dim} style={{ marginBottom: 8 }}>{label}</Txt>
       <View style={[row, { minHeight: 48, borderRadius: 16, backgroundColor: 'rgba(255,255,255,0.045)', borderWidth: 0.5, borderColor: C.line, paddingHorizontal: 12 }]}>
         <Feather name="search" size={15} color={C.faint} />
-        <TextInput value={q} onChangeText={setQ} placeholder={tr("جست‌وجو یا نام تازه…")} placeholderTextColor={C.faint} style={{ flex: 1, color: C.text, fontFamily: F.regular, fontSize: 14, textAlign: 'right', marginRight: 10 }} />
+        <TextInput value={q} onChangeText={setQ} placeholder={tr("جست‌وجو یا نام تازه…")} placeholderTextColor={C.faint} style={{ flex: 1, color: C.text, fontFamily: F.regular, fontSize: 15.5, textAlign: 'right', marginRight: 10 }} />
       </View>
       {hits.map((x) => (
         <Animated.View key={x.id} entering={FadeInDown.duration(200)}>

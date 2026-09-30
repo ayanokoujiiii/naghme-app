@@ -1,8 +1,8 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
-import { Canvas, Circle, Group, Path, Skia } from '@shopify/react-native-skia';
+import Svg, { Circle, Path } from 'react-native-svg';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
-import { runOnJS, useDerivedValue, useSharedValue, withSequence, withTiming } from 'react-native-reanimated';
+import Animated, { runOnJS, useAnimatedStyle, useSharedValue, withSequence, withTiming } from 'react-native-reanimated';
 import { C } from '../theme';
 import { fmtTime } from '../utils';
 import { tap } from './kit';
@@ -13,12 +13,14 @@ import { Txt } from './Txt';
  * The seek bar is a santur: 18 courses of 4 strings (72 strings, like the real
  * instrument) with their خرک bridges. Drag across it and every course you cross
  * is plucked (it vibrates and you feel a light tick); let go to jump there.
- * While the music plays, each course lights up and rings as time passes it.
  * Time runs left to right even in RTL layouts, like every media control.
+ *
+ * v1.1: static parts are one SVG (redrawn only when a course lights up, 18 times
+ * per track); the vibrating course is four thin native views. No canvas.
  */
 const COURSES = 18;
 const PER_COURSE = 4;
-const H = 58;
+const H = 62;
 const INSET = 16;
 
 export function SanturScrubber({ position, duration, onSeek, under }: {
@@ -29,7 +31,7 @@ export function SanturScrubber({ position, duration, onSeek, under }: {
   const dragging = useSharedValue(0);
   const dragX = useSharedValue(0);
   const lastCourse = useSharedValue(-1);
-  const pluck = useSharedValue(-1);
+  const pluckX = useSharedValue(-100);
   const amp = useSharedValue(0);
 
   const left = INSET + 6;
@@ -41,53 +43,28 @@ export function SanturScrubber({ position, duration, onSeek, under }: {
   const frac = duration > 0 ? Math.min(1, Math.max(0, shown / duration)) : 0;
   const lit = Math.floor(frac * COURSES + 0.0001);
 
-  // The trapezoid body and the two rows of bridges never change for a given width.
-  const body = useMemo(() => {
-    const p = Skia.Path.Make();
-    if (!w) return p;
-    p.moveTo(0, H - 3);
-    p.lineTo(INSET, 3);
-    p.lineTo(w - INSET, 3);
-    p.lineTo(w, H - 3);
-    p.close();
-    return p;
-  }, [w]);
-
-  const strings = useMemo(() => {
-    const played = Skia.Path.Make();
-    const rest = Skia.Path.Make();
+  const art = useMemo(() => {
+    if (!w) return null;
+    const body = `M0 ${H - 3} L${INSET} 3 L${w - INSET} 3 L${w} ${H - 3} Z`;
+    let played = '';
+    let rest = '';
     const bridges: { x: number; y: number; on: boolean }[] = [];
-    if (!w) return { played, rest, bridges };
     for (let c = 0; c < COURSES; c++) {
-      const target = c < lit ? played : rest;
-      const x0 = left + c * gap - (PER_COURSE - 1) * 0.65;
+      const x0 = left + c * gap - (PER_COURSE - 1) * 0.7;
+      let d = '';
       for (let k = 0; k < PER_COURSE; k++) {
-        const x = x0 + k * 1.3;
-        target.moveTo(x, 8);
-        target.lineTo(x, H - 8);
+        const x = x0 + k * 1.4;
+        d += `M${x.toFixed(1)} 8V${H - 8}`;
       }
-      // خرک: bridges alternate between the upper and lower thirds, as on a santur.
+      if (c < lit) played += d; else rest += d;
       bridges.push({ x: left + c * gap, y: c % 2 ? H * 0.34 : H * 0.66, on: c < lit });
     }
-    return { played, rest, bridges };
+    return { body, played, rest, bridges };
   }, [w, lit, left, gap]);
-
-  const vibrating = useDerivedValue(() => {
-    const p = Skia.Path.Make();
-    const c = pluck.value;
-    if (c < 0 || !span) return p;
-    const x0 = left + c * gap - (PER_COURSE - 1) * 0.65;
-    for (let k = 0; k < PER_COURSE; k++) {
-      const x = x0 + k * 1.3;
-      p.moveTo(x, 8);
-      p.quadTo(x + amp.value * (1 - k * 0.12), H / 2, x, H - 8);
-    }
-    return p;
-  });
 
   const ring = (course: number, strength = 1) => {
     'worklet';
-    pluck.value = course;
+    pluckX.value = left + course * gap - (PER_COURSE - 1) * 0.7;
     amp.value = withSequence(
       withTiming(4 * strength, { duration: 35 }),
       withTiming(-3 * strength, { duration: 70 }),
@@ -100,7 +77,7 @@ export function SanturScrubber({ position, duration, onSeek, under }: {
   // As the music passes a course, that course rings softly by itself.
   const prevLit = useRef(lit);
   useEffect(() => {
-    if (preview === null && lit !== prevLit.current && lit > 0) ring(lit - 1, 0.45);
+    if (preview === null && lit !== prevLit.current && lit > 0 && w) ring(lit - 1, 0.45);
     prevLit.current = lit;
   }, [lit]);
 
@@ -116,6 +93,7 @@ export function SanturScrubber({ position, duration, onSeek, under }: {
 
   const pan = Gesture.Pan()
     .hitSlop({ top: 12, bottom: 12 })
+    .minDistance(0)
     .onBegin((e) => {
       dragging.value = 1;
       dragX.value = e.x;
@@ -141,34 +119,44 @@ export function SanturScrubber({ position, duration, onSeek, under }: {
       runOnJS(setPreview)(null);
     });
 
+  const s0 = useAnimatedStyle(() => ({ transform: [{ translateX: pluckX.value + amp.value }] }));
+  const s1 = useAnimatedStyle(() => ({ transform: [{ translateX: pluckX.value + 1.4 + amp.value * 0.88 }] }));
+  const s2 = useAnimatedStyle(() => ({ transform: [{ translateX: pluckX.value + 2.8 + amp.value * 0.76 }] }));
+  const s3 = useAnimatedStyle(() => ({ transform: [{ translateX: pluckX.value + 4.2 + amp.value * 0.64 }] }));
+  const glow = useAnimatedStyle(() => ({ opacity: Math.min(1, Math.abs(amp.value) / 3) }));
+
   const headX = left + frac * span;
+  const active = preview !== null;
   return (
     <View>
       <GestureDetector gesture={pan}>
-        <View style={{ height: H }} onLayout={(e) => setW(e.nativeEvent.layout.width)}>
-          {w ? (
-            <Canvas style={StyleSheet.absoluteFill}>
-              <Path path={body} color={C.zar} opacity={0.07} />
-              <Path path={body} color={C.zar} opacity={0.35} style="stroke" strokeWidth={0.8} />
-              <Path path={strings.rest} color={C.text} opacity={0.22} style="stroke" strokeWidth={0.6} />
-              <Path path={strings.played} color={C.zar} opacity={0.9} style="stroke" strokeWidth={0.7} />
-              <Path path={vibrating} color="#F3D9A8" style="stroke" strokeWidth={0.9} />
-              <Group>
-                {strings.bridges.map((b, i) => (
-                  <Circle key={i} cx={b.x} cy={b.y} r={1.9} color={b.on ? C.zar : 'rgba(236,232,225,0.35)'} />
-                ))}
-              </Group>
+        <View style={{ height: H }} onLayout={(e) => setW(e.nativeEvent.layout.width)} collapsable={false}>
+          {art ? (
+            <Svg width={w} height={H} style={StyleSheet.absoluteFill} pointerEvents="none">
+              <Path d={art.body} fill={C.zar} fillOpacity={0.12} stroke={C.zar} strokeOpacity={0.7} strokeWidth={1} />
+              <Path d={art.rest} stroke={C.text} strokeOpacity={0.42} strokeWidth={0.8} />
+              <Path d={art.played} stroke={C.zarBright} strokeOpacity={1} strokeWidth={0.95} />
+              {art.bridges.map((b, i) => (
+                <Circle key={i} cx={b.x} cy={b.y} r={2.2} fill={b.on ? C.zarBright : 'rgba(236,232,225,0.55)'} />
+              ))}
               {/* مضراب: the little mallet head marks where you are. */}
-              <Circle cx={headX} cy={H - 4} r={preview !== null ? 5.5 : 4} color={C.text} />
-              <Circle cx={headX} cy={H - 4} r={preview !== null ? 9 : 7} color={C.zar} opacity={0.25} />
-            </Canvas>
+              <Circle cx={headX} cy={H - 4} r={active ? 10 : 8} fill={C.zar} fillOpacity={0.3} />
+              <Circle cx={headX} cy={H - 4} r={active ? 5.5 : 4.5} fill={C.text} />
+            </Svg>
+          ) : null}
+          {w ? (
+            <Animated.View pointerEvents="none" style={[StyleSheet.absoluteFill, glow]}>
+              {[s0, s1, s2, s3].map((st, k) => (
+                <Animated.View key={k} style={[styles.string, st]} />
+              ))}
+            </Animated.View>
           ) : null}
         </View>
       </GestureDetector>
       {under}
       <View style={styles.times}>
-        <Txt v="caption" left>{fmtTime(shown)}</Txt>
-        <Txt v="caption">{duration ? `-${fmtTime(Math.max(0, duration - shown))}` : ''}</Txt>
+        <Txt v="caption" left color={C.dim}>{fmtTime(shown)}</Txt>
+        <Txt v="caption" color={C.dim}>{duration ? `-${fmtTime(Math.max(0, duration - shown))}` : ''}</Txt>
       </View>
     </View>
   );
@@ -176,4 +164,5 @@ export function SanturScrubber({ position, duration, onSeek, under }: {
 
 const styles = StyleSheet.create({
   times: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 4 },
+  string: { position: 'absolute', left: 0, top: 8, width: 1.2, height: H - 16, backgroundColor: '#F7DDA8', borderRadius: 1 },
 });

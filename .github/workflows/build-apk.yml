@@ -1,57 +1,61 @@
-name: Build Naghme APK (EAS)
+name: Build Naghme APK
 
 on:
-  push:
-    branches:
-      - main
   workflow_dispatch:
+  push:
+    branches: [main]
 
 permissions:
-  contents: read
+  contents: write
 
 concurrency:
-  group: eas-android-${{ github.ref }}
-  cancel-in-progress: false
+  group: apk-build
+  cancel-in-progress: true
 
 jobs:
   android:
-    name: Build Android APK on EAS
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 60
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v4
 
-      - uses: actions/setup-node@v6
+      - uses: actions/setup-node@v4
         with:
           node-version: 22
-          cache: npm
 
-      - name: Install project dependencies
-        run: npm ci
-
-      - name: Check required EAS configuration
-        shell: bash
-        env:
-          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
-          EAS_PROJECT_ID: ${{ vars.EAS_PROJECT_ID }}
-        run: |
-          if [ -z "$EXPO_TOKEN" ]; then
-            echo "::error title=Missing Expo token::Add EXPO_TOKEN as a repository Actions secret."
-            exit 1
-          fi
-          if [ -z "$EAS_PROJECT_ID" ]; then
-            echo "::error title=Missing EAS project ID::Create or link the Expo project, then add EAS_PROJECT_ID as a repository Actions variable."
-            exit 1
-          fi
-
-      - name: Set up Expo and EAS CLI
-        uses: expo/expo-github-action@v8
+      - uses: actions/setup-java@v4
         with:
-          eas-version: latest
-          token: ${{ secrets.EXPO_TOKEN }}
+          distribution: temurin
+          java-version: 17
 
-      - name: Start Android APK build on EAS
+      - uses: gradle/actions/setup-gradle@v4
+
+      - name: Install packages
+        run: npm install --no-audit --no-fund
+
+      - name: Align package versions with Expo SDK
+        run: npx expo install --fix
+
+      - name: Generate Android project
+        run: npx expo prebuild --platform android --clean --no-install
         env:
-          EAS_PROJECT_ID: ${{ vars.EAS_PROJECT_ID }}
+          CI: 1
           BUILD_NUMBER: ${{ github.run_number }}
-        run: eas build --platform android --profile preview --non-interactive --no-wait
+
+      - name: Build APK
+        working-directory: android
+        run: ./gradlew assembleRelease --no-daemon -PreactNativeArchitectures=arm64-v8a
+        env:
+          BUILD_NUMBER: ${{ github.run_number }}
+
+      - name: Name the APK
+        run: cp android/app/build/outputs/apk/release/app-release.apk naghme-${{ github.run_number }}.apk
+
+      - name: Publish release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: build-${{ github.run_number }}
+          name: Naghme build ${{ github.run_number }}
+          body: "برای نصب، فایل naghme-${{ github.run_number }}.apk را روی گوشی دانلود و باز کنید."
+          files: naghme-${{ github.run_number }}.apk
+          make_latest: true

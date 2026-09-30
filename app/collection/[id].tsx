@@ -1,4 +1,5 @@
 import React from 'react';
+import { TermehProvider } from '@/src/motifs/Termeh';
 import { Alert, ScrollView, View } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import Animated, { FadeInDown } from 'react-native-reanimated';
@@ -22,6 +23,7 @@ export default function CollectionScreen() {
   const c = col.data;
   if (!c) return <View style={{ flex: 1, backgroundColor: C.bg }}><Empty title="مجموعه پیدا نشد" /></View>;
   return (
+    <TermehProvider pattern="gol">
     <View style={{ flex: 1 }}>
       <Ambient intensity={0.8} />
       <Header right={<IconBtn name="edit-2" onPress={() => router.push({ pathname: '/edit/collection', params: { id: c.id } })} />} />
@@ -49,5 +51,6 @@ export default function CollectionScreen() {
         </View>
       </ScrollView>
     </View>
+    </TermehProvider>
   );
 }

@@ -1,4 +1,5 @@
 import React from 'react';
+import { TermehProvider } from '@/src/motifs/Termeh';
 import { Alert, ScrollView, StyleSheet, View, useWindowDimensions } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { Image } from 'expo-image';
@@ -26,6 +27,7 @@ export default function AlbumScreen() {
   const total = (recs.data ?? []).reduce((s, r) => s + (r.duration ?? 0), 0);
   const size = Math.min(width * 0.62, 260);
   return (
+    <TermehProvider pattern="boteh">
     <View style={{ flex: 1, backgroundColor: C.bg }}>
       {album.cover ? <Image source={{ uri: album.cover }} style={[StyleSheet.absoluteFill, { opacity: 0.55 }]} blurRadius={60} contentFit="cover" /> : null}
       <LinearGradient colors={['rgba(11,11,12,0.3)', C.bg]} locations={[0, 0.6]} style={StyleSheet.absoluteFill} />
@@ -50,5 +52,6 @@ export default function AlbumScreen() {
         </View>
       </ScrollView>
     </View>
+    </TermehProvider>
   );
 }

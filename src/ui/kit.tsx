@@ -8,7 +8,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { C, R } from '../theme';
 import { Txt } from './Txt';
 import { Boteh, Rosette } from '../motifs/Ornament';
-import { Termeh } from '../motifs/Termeh';
+import { Termeh, TermehPattern } from '../motifs/Termeh';
 import { unfold } from './motion';
 
 export const row = { flexDirection: 'row-reverse' as const, alignItems: 'center' as const };
@@ -72,10 +72,10 @@ export function Pressy({ style, scaleTo = 0.96, haptic = true, bloom = false, on
 }
 
 /** A card of termeh cloth: every card carries a faint woven بته‌جقه texture. Pass `plain` to leave it out. */
-export function Card({ style, children, soft, plain }: { style?: StyleProp<ViewStyle>; children?: React.ReactNode; soft?: boolean; plain?: boolean }) {
+export function Card({ style, children, soft, plain, pattern }: { style?: StyleProp<ViewStyle>; children?: React.ReactNode; soft?: boolean; plain?: boolean; pattern?: TermehPattern }) {
   return (
-    <View style={[styles.card, soft && { backgroundColor: 'rgba(255,255,255,0.03)' }, style]}>
-      {plain ? null : <Termeh />}
+    <View style={[styles.card, soft && { backgroundColor: 'rgba(255,240,220,0.045)' }, style]}>
+      {plain ? null : <Termeh pattern={pattern} />}
       {children}
     </View>
   );
@@ -85,7 +85,7 @@ export function IconBtn({ name, onPress, size = 20, color = C.text, style, fille
   name: keyof typeof Feather.glyphMap; onPress?: () => void; size?: number; color?: string; style?: StyleProp<ViewStyle>; filled?: boolean; label?: string;
 }) {
   return (
-    <Pressy bloom={filled} onPress={onPress} scaleTo={0.88} style={[styles.iconBtn, filled && { backgroundColor: C.surface2 }, style]} accessibilityLabel={label}>
+    <Pressy bloom={filled} onPress={onPress} scaleTo={0.88} style={[styles.iconBtn, filled && { backgroundColor: C.surface2, borderWidth: 1, borderColor: C.lineStrong }, style]} accessibilityLabel={label}>
       <Feather name={name} size={size} color={color} />
     </Pressy>
   );
@@ -97,14 +97,14 @@ export function Chip({ label, active, onPress, color, icon }: { label: string; a
     on.value = withTiming(active ? 1 : 0, { duration: 220 });
   }, [active]);
   const a = useAnimatedStyle(() => ({
-    backgroundColor: on.value > 0.5 ? (color ? `${color}2A` : C.accentSoft) : 'rgba(255,255,255,0.04)',
-    borderColor: on.value > 0.5 ? (color ?? C.accent) + '66' : C.line,
+    backgroundColor: on.value > 0.5 ? (color ? `${color}33` : C.zarSoft) : 'rgba(255,240,220,0.07)',
+    borderColor: on.value > 0.5 ? (color ?? C.zar) + 'AA' : C.lineStrong,
   }));
   return (
     <Pressy onPress={() => { tap('select'); onPress?.(); }} haptic={false} scaleTo={0.94}>
       <Animated.View style={[styles.chip, a]}>
-        {icon ? <Feather name={icon} size={13} color={active ? color ?? C.accent : C.dim} style={{ marginLeft: 6 }} /> : null}
-        <Txt v="small" color={active ? color ?? C.accent : C.dim}>{label}</Txt>
+        {icon ? <Feather name={icon} size={15} color={active ? color ?? C.zarBright : C.zar} style={{ marginLeft: 6 }} /> : null}
+        <Txt v="small" color={active ? color ?? C.zarBright : C.text}>{label}</Txt>
       </Animated.View>
     </Pressy>
   );
@@ -123,8 +123,8 @@ export function Section({ title, action, onAction, children, style }: { title: s
     <Animated.View entering={unfold(60)} style={[{ marginTop: 30 }, style]}>
       <View style={[row, { justifyContent: 'space-between', paddingHorizontal: 22, marginBottom: 12 }]}>
         <View style={[row, { gap: 8 }]}>
-          <Boteh size={14} opacity={0.9} />
-          <Txt v="label" color={C.dim}>{title}</Txt>
+          <Boteh size={17} opacity={1} color={C.zarBright} />
+          <Txt v="label" color={C.zarBright} style={{ fontSize: 14 }}>{title}</Txt>
         </View>
         {action ? (
           <Pressy onPress={onAction} scaleTo={0.92}>
@@ -163,7 +163,7 @@ export function Button({ label, onPress, icon, kind = 'primary', style, loading,
       {loading ? <ActivityIndicator color={fg} size="small" /> : (
         <>
           {icon ? <Feather name={icon} size={16} color={fg} style={{ marginLeft: 8 }} /> : null}
-          <Txt v="h3" color={fg} style={{ fontSize: 14 }}>{label}</Txt>
+          <Txt v="h3" color={fg} style={{ fontSize: 15.5 }}>{label}</Txt>
         </>
       )}
     </Pressy>
@@ -175,7 +175,7 @@ export function Header({ title, subtitle, right, back = true, transparent }: { t
   return (
     <View style={[row, { paddingTop: insets.top + 8, paddingHorizontal: 14, paddingBottom: 8, justifyContent: 'space-between', backgroundColor: transparent ? 'transparent' : undefined }]}>
       <View style={[row, { flex: 1 }]}>
-        {back ? <IconBtn name="chevron-right" size={24} onPress={() => (router.canGoBack() ? router.back() : router.replace('/'))} label="بازگشت" /> : null}
+        {back ? <IconBtn name="chevron-right" size={26} color={C.zarBright} onPress={() => (router.canGoBack() ? router.back() : router.replace('/'))} label="بازگشت" /> : null}
         <View style={{ flex: 1, marginRight: back ? 4 : 8 }}>
           {title ? <Txt v="h2" numberOfLines={1}>{title}</Txt> : null}
           {subtitle ? <Txt v="caption" numberOfLines={1}>{subtitle}</Txt> : null}
@@ -202,18 +202,18 @@ const styles = StyleSheet.create({
   card: {
     backgroundColor: C.surface,
     borderRadius: R.lg,
-    borderWidth: StyleSheet.hairlineWidth,
+    borderWidth: 1,
     borderColor: C.line,
     overflow: 'hidden',
   },
-  iconBtn: { width: 42, height: 42, borderRadius: 21, alignItems: 'center', justifyContent: 'center' },
+  iconBtn: { width: 46, height: 46, borderRadius: 23, alignItems: 'center', justifyContent: 'center' },
   chip: {
     flexDirection: 'row-reverse',
     alignItems: 'center',
     paddingHorizontal: 14,
-    height: 34,
+    height: 38,
     borderRadius: R.pill,
-    borderWidth: StyleSheet.hairlineWidth,
+    borderWidth: 1,
   },
   badge: { paddingHorizontal: 8, paddingVertical: 2, borderRadius: 8, borderWidth: StyleSheet.hairlineWidth, alignSelf: 'flex-start' },
   emptyIcon: { width: 56, height: 56, borderRadius: 28, backgroundColor: C.accentSoft, alignItems: 'center', justifyContent: 'center' },

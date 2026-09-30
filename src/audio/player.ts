@@ -1,6 +1,7 @@
 import { createAudioPlayer, setAudioModeAsync, type AudioPlayer, type AudioStatus } from 'expo-audio';
 import { create } from 'zustand';
-import { onAudioSample, playingFlag } from './levels';
+import { PermissionsAndroid, Platform } from 'react-native';
+import { playingFlag } from './levels';
 import { getSetting, logPlayProgress, logPlayStart, setDuration, setSetting } from '../db/repo';
 
 export interface QueueItem {
@@ -67,24 +68,47 @@ function schedulePersist() {
   }, 800);
 }
 
+let notifAsked = false;
+/** Android 13+ needs this permission to show the media controls in the notification shade. */
+async function askNotificationPermission() {
+  if (notifAsked || Platform.OS !== 'android' || Number(Platform.Version) < 33) return;
+  notifAsked = true;
+  try {
+    await PermissionsAndroid.request('android.permission.POST_NOTIFICATIONS' as any);
+  } catch {
+    /* the music still plays; only the notification controls are missing */
+  }
+}
+
 async function ensurePlayer(): Promise<AudioPlayer> {
   if (player) return player;
+  // v1.1: keep playing when the app is closed or the screen is locked.
   await setAudioModeAsync({
     playsInSilentMode: true,
     shouldPlayInBackground: true,
+    interruptionMode: 'doNotMix',
     interruptionModeAndroid: 'doNotMix',
     allowsRecording: false,
   } as any).catch(() => undefined);
   player = createAudioPlayer(null);
   player.addListener('playbackStatusUpdate', onStatus);
-  // Ask for live samples so the ornaments can move with the music. Optional: silently skipped if unsupported.
-  try {
-    (player as any).setAudioSamplingEnabled?.(true);
-    (player as any).addListener('audioSampleUpdate', onAudioSample);
-  } catch {
-    /* visuals fall back to a synthetic breath */
-  }
+  // v1.1: live audio sampling removed. On Android it relies on the Visualizer
+  // API, which needs the microphone permission this app deliberately blocks,
+  // and it could stop playback. The ornaments use their calm synthetic breath.
   return player;
+}
+
+/** Show the track on the lock screen and in the notification shade (keeps playback alive in background). */
+function showOnLockScreen(p: AudioPlayer, item: QueueItem) {
+  try {
+    (p as any).setActiveForLockScreen?.(
+      true,
+      { title: item.title, artist: item.artist || 'نغمه', albumTitle: 'نغمه', artworkUrl: item.cover ?? undefined },
+      { showSeekForward: true, showSeekBackward: true },
+    );
+  } catch {
+    /* lock screen controls are optional */
+  }
 }
 
 function onStatus(st: AudioStatus) {
@@ -140,19 +164,11 @@ async function load(index: number, autoplay: boolean, startAt = 0) {
       p.replace({ uri: item.uri });
       loadedId = item.id;
     }
-    try {
-      (p as any).setActiveForLockScreen?.(true, {
-        title: item.title,
-        artist: item.artist,
-        albumTitle: 'نغمه',
-        artworkUrl: item.cover ?? undefined,
-      });
-    } catch {
-      /* lock screen controls are optional */
-    }
     if (startAt > 0) await p.seekTo(startAt);
     if (autoplay) {
+      void askNotificationPermission();
       p.play();
+      showOnLockScreen(p, item);
       session = { historyId: null, recId: item.id, listened: 0, lastPos: startAt };
       const sess = session;
       logPlayStart(item.id).then((hid) => {
@@ -234,6 +250,7 @@ export async function togglePlay() {
   if (p.playing) p.pause();
   else {
     p.play();
+    showOnLockScreen(p, currentItem(s)!);
     if (!session) {
       const item = currentItem(s)!;
       session = { historyId: null, recId: item.id, listened: 0, lastPos: p.currentTime };

@@ -8,25 +8,22 @@ import type { StackCardInterpolationProps, StackNavigationOptions } from '@react
  * Going back turns the page the other way.
  */
 function pageTurn({ current, next, layouts }: StackCardInterpolationProps) {
+  // v1.1: a light page turn. Only opacity + transforms, no 3D perspective on the
+  // whole screen (that was the main cause of slow, stuttering transitions).
   const w = layouts.screen.width;
   const p = current.progress;
   const n = next ? next.progress : new Animated.Value(0);
   return {
     cardStyle: {
-      backfaceVisibility: 'hidden' as const,
-      opacity: p.interpolate({ inputRange: [0, 0.2, 1], outputRange: [0, 1, 1] }),
+      opacity: p.interpolate({ inputRange: [0, 0.35, 1], outputRange: [0, 1, 1] }),
       transform: [
-        { perspective: 1600 },
-        { translateX: w / 2 },
-        { rotateY: p.interpolate({ inputRange: [0, 1], outputRange: ['72deg', '0deg'] }) },
-        { translateX: -w / 2 },
-        { scale: n.interpolate({ inputRange: [0, 1], outputRange: [1, 0.9] }) },
-        { translateX: n.interpolate({ inputRange: [0, 1], outputRange: [0, w * 0.08] }) },
+        { translateX: p.interpolate({ inputRange: [0, 1], outputRange: [-w * 0.22, 0] }) },
+        { scale: n.interpolate({ inputRange: [0, 1], outputRange: [1, 0.95] }) },
       ],
     },
     overlayStyle: {
       backgroundColor: '#050403',
-      opacity: p.interpolate({ inputRange: [0, 1], outputRange: [0, 0.65] }),
+      opacity: p.interpolate({ inputRange: [0, 1], outputRange: [0, 0.6] }),
     },
   };
 }
@@ -37,15 +34,11 @@ function rise({ current, layouts }: StackCardInterpolationProps) {
   const p = current.progress;
   return {
     cardStyle: {
-      opacity: p.interpolate({ inputRange: [0, 0.3, 1], outputRange: [0, 1, 1] }),
+      opacity: p.interpolate({ inputRange: [0, 0.25, 1], outputRange: [0, 1, 1] }),
       transform: [
-        { perspective: 1400 },
-        { translateY: p.interpolate({ inputRange: [0, 1], outputRange: [h * 0.6, 0] }) },
-        { rotateX: p.interpolate({ inputRange: [0, 1], outputRange: ['-18deg', '0deg'] }) },
-        { scale: p.interpolate({ inputRange: [0, 1], outputRange: [0.86, 1] }) },
+        { translateY: p.interpolate({ inputRange: [0, 1], outputRange: [h * 0.5, 0] }) },
+        { scale: p.interpolate({ inputRange: [0, 1], outputRange: [0.92, 1] }) },
       ],
-      borderRadius: p.interpolate({ inputRange: [0, 1], outputRange: [40, 0] }),
-      overflow: 'hidden' as const,
     },
     overlayStyle: { backgroundColor: '#000', opacity: p.interpolate({ inputRange: [0, 1], outputRange: [0, 0.7] }) },
   };
@@ -65,8 +58,8 @@ export const pageOptions: StackNavigationOptions = {
   gestureDirection: 'horizontal-inverted',
   cardStyleInterpolator: pageTurn,
   transitionSpec: {
-    open: { animation: 'timing', config: { duration: 620, easing: ease } },
-    close: { animation: 'timing', config: { duration: 480, easing: Easing.inOut(Easing.cubic) } },
+    open: { animation: 'timing', config: { duration: 340, easing: ease } },
+    close: { animation: 'timing', config: { duration: 260, easing: Easing.out(Easing.cubic) } },
   },
 };
 
@@ -77,8 +70,8 @@ export const riseOptions: StackNavigationOptions = {
   cardOverlayEnabled: true,
   cardStyleInterpolator: rise,
   transitionSpec: {
-    open: { animation: 'spring', config: { damping: 22, stiffness: 160, mass: 1 } },
-    close: { animation: 'timing', config: { duration: 380, easing: Easing.in(Easing.cubic) } },
+    open: { animation: 'timing', config: { duration: 380, easing: ease } },
+    close: { animation: 'timing', config: { duration: 280, easing: Easing.in(Easing.cubic) } },
   },
 };
 

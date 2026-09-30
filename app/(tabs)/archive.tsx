@@ -1,3 +1,4 @@
+import { TermehProvider } from '@/src/motifs/Termeh';
 import React, { useMemo, useState } from 'react';
 import { FlatList, ScrollView, StyleSheet, TextInput, View, useWindowDimensions } from 'react-native';
 import { router } from 'expo-router';
@@ -16,6 +17,7 @@ import { listAlbums, listArtists, listCollections, listRecordings, listWorks } f
 import { playRows } from '@/src/audio/queue';
 import { matches, toFa } from '@/src/utils';
 import { tr } from '@/src/i18n';
+import { inDastgah } from '@/src/radif';
 
 type Seg = 'artists' | 'works' | 'recordings' | 'albums' | 'collections';
 const SEGS: { key: Seg; label: string }[] = [
@@ -26,7 +28,7 @@ const SEGS: { key: Seg; label: string }[] = [
   { key: 'collections', label: 'مجموعه‌ها' },
 ];
 
-export default function Archive() {
+function ArchiveInner() {
   const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
   const [seg, setSeg] = useState<Seg>('artists');
@@ -45,7 +47,7 @@ export default function Archive() {
 
   const fArtists = useMemo(() => byTrad(artists.data).filter((a) => matches(q, a.name, a.nameLatin, a.instruments)), [artists.data, trad, q]);
   const fWorks = useMemo(
-    () => byTrad(works.data).filter((w) => (!dastgah || w.dastgah === dastgah) && matches(q, w.title, w.titleLatin, w.composers, w.catalog, w.dastgah, w.avaz, w.gousheh, w.form)),
+    () => byTrad(works.data).filter((w) => (!dastgah || inDastgah(w, dastgah)) && matches(q, w.title, w.titleLatin, w.composers, w.catalog, w.dastgah, w.avaz, w.gousheh, w.form)),
     [works.data, trad, q, dastgah],
   );
   const fRecs = useMemo(() => (recs.data ?? []).filter((r) => matches(q, r.title, r.performers, r.composers, r.albumTitle, r.workTitle)), [recs.data, q]);
@@ -62,11 +64,14 @@ export default function Archive() {
         <Txt v="display" style={{ fontSize: 32, lineHeight: 48 }}>آرشیو</Txt>
         <View style={[row, { gap: 6 }]}>
           {seg === 'artists' || seg === 'albums' ? (
-            <IconBtn name={vitrine ? 'grid' : 'eye'} filled={vitrine} onPress={() => { tap('select'); setVitrine(!vitrine); }} label={vitrine ? 'نمای شبکه' : 'ویترین موزه'} />
+            <Chip icon={vitrine ? 'grid' : 'box'} label={vitrine ? 'نمای ساده' : 'نمایشگاه'} active={vitrine} onPress={() => { tap('select'); setVitrine(!vitrine); }} />
           ) : null}
           <IconBtn name="plus" filled onPress={() => router.push('/add')} label="افزودن" />
         </View>
       </View>
+      {vitrine && (seg === 'artists' || seg === 'albums') ? (
+        <Txt v="caption" color={C.zarBright} style={{ paddingHorizontal: 22, marginTop: 4 }}>حالت نمایشگاه: هر هنرمند و آلبوم مثل اثری در ویترین موزه، زیر نور نورافکن.</Txt>
+      ) : null}
       <View style={[row, styles.search]}>
         <Feather name="search" size={17} color={C.faint} />
         <TextInput
@@ -288,6 +293,15 @@ const styles = StyleSheet.create({
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: C.line,
   },
-  searchInput: { flex: 1, color: C.text, fontFamily: F.regular, fontSize: 14, textAlign: 'right', marginRight: 10, paddingVertical: 0 },
+  searchInput: { flex: 1, color: C.text, fontFamily: F.regular, fontSize: 15.5, textAlign: 'right', marginRight: 10, paddingVertical: 0 },
   newCol: { marginHorizontal: 18, marginBottom: 8, padding: 16, borderRadius: 18, borderWidth: 1, borderStyle: 'dashed', borderColor: C.accentSoft },
 });
+
+/** v1.1: the archive has its own cloth, the lattice (گره‌چینی). */
+export default function Archive() {
+  return (
+    <TermehProvider pattern="gereh">
+      <ArchiveInner />
+    </TermehProvider>
+  );
+}

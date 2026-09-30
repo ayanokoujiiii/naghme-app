@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo } from 'react';
 import { StyleSheet, useWindowDimensions, View } from 'react-native';
-import { Canvas, Group, Path, Skia, vec } from '@shopify/react-native-skia';
-import Animated, { Easing, runOnJS, useAnimatedStyle, useDerivedValue, useSharedValue, withTiming } from 'react-native-reanimated';
+import Svg, { Path } from 'react-native-svg';
+import Animated, { Easing, runOnJS, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 import { create } from 'zustand';
 import { C } from '../theme';
 import { doily } from '../motifs/geometry';
@@ -9,10 +9,11 @@ import { tap } from './kit';
 
 /**
  * «شکافتن رومیزی»: whenever something is deleted, a crocheted doily appears and
- * slowly comes apart. Its thread unwinds, the lace loosens and drifts away and a
- * loose strand of yarn falls, as if someone pulled the end of the thread.
+ * slowly comes apart. The lace loosens, turns and drifts away while a loose
+ * strand of yarn falls, as if someone pulled the end of the thread.
  *
  * Use `unravel(() => deleteSomething())` in place of calling the delete directly.
+ * v1.1: SVG layers moved by native transforms (no canvas).
  */
 interface UnravelState { key: number; seed: string; run: (() => void | Promise<void>) | null }
 const useUnravel = create<UnravelState>(() => ({ key: 0, seed: 'naghme', run: null }));
@@ -22,7 +23,7 @@ export function unravel(action: () => void | Promise<void>, seed = 'naghme') {
   useUnravel.setState((s) => ({ key: s.key + 1, seed, run: action }));
 }
 
-const DURATION = 1400;
+const DURATION = 1300;
 
 export function UnravelHost() {
   const { key, seed, run } = useUnravel();
@@ -33,22 +34,16 @@ export function UnravelHost() {
 function UnravelPlay({ seed, run }: { seed: string; run: () => void | Promise<void> }) {
   const { width, height } = useWindowDimensions();
   const size = Math.min(width * 0.72, 280);
-  const cx = width / 2;
-  const cy = height * 0.42;
-
-  const paths = useMemo(() => {
-    const L = doily(size / 2, seed, cx, cy);
-    const make = (d: string) => Skia.Path.MakeFromSVGString(d) ?? Skia.Path.Make();
-    // the loose strand of yarn falling from the edge of the doily
-    const yarn = Skia.Path.Make();
-    const startY = cy + size / 2 - 6;
-    yarn.moveTo(cx, startY);
+  const L = useMemo(() => doily(size / 2, seed), [size, seed]);
+  const yarnH = height * 0.5;
+  const yarn = useMemo(() => {
+    let d = `M${size / 2} 0`;
     for (let i = 1; i <= 16; i++) {
-      const y = startY + i * ((height - startY) / 16);
-      yarn.quadTo(cx + (i % 2 ? 16 : -16) * (1 - i / 22), y - (height - startY) / 32, cx + (i % 2 ? 4 : -4), y);
+      const y = i * (yarnH / 16);
+      d += ` Q${size / 2 + (i % 2 ? 16 : -16) * (1 - i / 22)} ${y - yarnH / 32} ${size / 2 + (i % 2 ? 4 : -4)} ${y}`;
     }
-    return { thread: make(L.thread), body: make(L.body), eyelets: make(L.eyelets), yarn };
-  }, [size, seed, width, height]);
+    return d;
+  }, [size, yarnH]);
 
   const t = useSharedValue(0);
   const done = () => useUnravel.setState({ run: null });
@@ -61,31 +56,54 @@ function UnravelPlay({ seed, run }: { seed: string; run: () => void | Promise<vo
     return () => clearTimeout(h);
   }, []);
 
-  const appear = useDerivedValue(() => Math.min(1, t.value * 6));
-  const threadEnd = useDerivedValue(() => 1 - Math.max(0, (t.value - 0.12) / 0.75));
-  const bodyOpacity = useDerivedValue(() => appear.value * (1 - Math.max(0, (t.value - 0.25) / 0.6)));
-  const eyeOpacity = useDerivedValue(() => appear.value * (1 - t.value));
-  const yarnEnd = useDerivedValue(() => Math.max(0, Math.min(1, (t.value - 0.15) / 0.7)));
-  const yarnOpacity = useDerivedValue(() => (t.value < 0.85 ? 1 : 1 - (t.value - 0.85) / 0.15));
-  const bodyTransform = useDerivedValue(() => [{ rotate: t.value * 0.7 }, { scale: 1 + t.value * 0.18 }]);
-  const eyeTransform = useDerivedValue(() => [{ rotate: -t.value * 0.9 }, { scale: 1 + t.value * 0.7 }]);
+  const veil = useAnimatedStyle(() => ({ opacity: Math.sin(Math.min(1, t.value) * Math.PI) * 0.6 }));
+  const body = useAnimatedStyle(() => ({
+    opacity: Math.min(1, t.value * 6) * (1 - Math.max(0, (t.value - 0.25) / 0.6)),
+    transform: [{ rotate: `${t.value * 40}deg` }, { scale: 1 + t.value * 0.18 }],
+  }));
+  const eyes = useAnimatedStyle(() => ({
+    opacity: Math.min(1, t.value * 6) * (1 - t.value),
+    transform: [{ rotate: `${-t.value * 52}deg` }, { scale: 1 + t.value * 0.7 }],
+  }));
+  const thread = useAnimatedStyle(() => ({
+    opacity: Math.min(1, t.value * 6) * (1 - Math.max(0, (t.value - 0.12) / 0.75)),
+    transform: [{ rotate: `${t.value * 120}deg` }, { scale: 1 - t.value * 0.35 }],
+  }));
+  const yarnStyle = useAnimatedStyle(() => {
+    const u = Math.max(0, Math.min(1, (t.value - 0.15) / 0.7));
+    return {
+      opacity: t.value < 0.85 ? 1 : 1 - (t.value - 0.85) / 0.15,
+      height: Math.max(1, u * yarnH),
+    };
+  });
 
-  const veil = useAnimatedStyle(() => ({ opacity: Math.sin(Math.min(1, t.value) * Math.PI) * 0.55 }));
-
+  const top = height * 0.42 - size / 2;
+  const leftX = width / 2 - size / 2;
   return (
     <View style={StyleSheet.absoluteFill} pointerEvents="auto">
       <Animated.View style={[StyleSheet.absoluteFill, { backgroundColor: C.black }, veil]} />
-      <Canvas style={StyleSheet.absoluteFill}>
-        <Group origin={vec(cx, cy)} transform={bodyTransform} opacity={bodyOpacity}>
-          <Path path={paths.body} color={C.zar} opacity={0.22} />
-          <Path path={paths.body} color={C.zar} style="stroke" strokeWidth={1} />
-        </Group>
-        <Group origin={vec(cx, cy)} transform={eyeTransform} opacity={eyeOpacity}>
-          <Path path={paths.eyelets} color={C.zar} style="stroke" strokeWidth={0.8} />
-        </Group>
-        <Path path={paths.thread} color={C.zar} style="stroke" strokeWidth={1.1} strokeCap="round" start={0} end={threadEnd} opacity={appear} />
-        <Path path={paths.yarn} color="#F3D9A8" style="stroke" strokeWidth={1.2} strokeCap="round" start={0} end={yarnEnd} opacity={yarnOpacity} />
-      </Canvas>
+      <View style={{ position: 'absolute', left: leftX, top, width: size, height: size }} pointerEvents="none">
+        <Animated.View style={[StyleSheet.absoluteFill, body]}>
+          <Svg width={size} height={size}>
+            <Path d={L.body} fill={C.zar} fillOpacity={0.25} stroke={C.zarBright} strokeWidth={1.1} />
+          </Svg>
+        </Animated.View>
+        <Animated.View style={[StyleSheet.absoluteFill, eyes]}>
+          <Svg width={size} height={size}>
+            <Path d={L.eyelets} fill="none" stroke={C.zarBright} strokeWidth={0.9} />
+          </Svg>
+        </Animated.View>
+        <Animated.View style={[StyleSheet.absoluteFill, thread]}>
+          <Svg width={size} height={size}>
+            <Path d={L.thread} fill="none" stroke={C.zar} strokeWidth={1.2} strokeLinecap="round" />
+          </Svg>
+        </Animated.View>
+      </View>
+      <Animated.View pointerEvents="none" style={[{ position: 'absolute', left: leftX, top: top + size - 6, width: size, overflow: 'hidden' }, yarnStyle]}>
+        <Svg width={size} height={yarnH}>
+          <Path d={yarn} fill="none" stroke="#F3D9A8" strokeWidth={1.3} strokeLinecap="round" />
+        </Svg>
+      </Animated.View>
     </View>
   );
 }

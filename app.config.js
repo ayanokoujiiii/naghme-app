@@ -1,11 +1,13 @@
-// GitHub Actions supplies BUILD_NUMBER for each build so an updated APK can
-// install over the previous version without changing the Android package name.
+// Keep Android installs updateable while honoring CI build numbering.
 module.exports = ({ config }) => {
-  const parsedBuild = Number.parseInt(process.env.BUILD_NUMBER || '1', 10);
-  const buildNumber = Number.isSafeInteger(parsedBuild) && parsedBuild > 0 ? parsedBuild : 1;
+  const parsedManifestBuild = Number.parseInt(String(config.android?.versionCode ?? 1), 10);
+  const manifestBuild = Number.isSafeInteger(parsedManifestBuild) && parsedManifestBuild > 0 ? parsedManifestBuild : 1;
+  const parsedRequestedBuild = Number.parseInt(process.env.BUILD_NUMBER || '', 10);
+  const buildNumber = Number.isSafeInteger(parsedRequestedBuild) && parsedRequestedBuild > 0
+    ? Math.max(parsedRequestedBuild, manifestBuild)
+    : manifestBuild;
   const eas = config.extra?.eas || {};
   const projectId = process.env.EAS_PROJECT_ID || eas.projectId;
-
   return {
     ...config,
     android: { ...config.android, versionCode: buildNumber },

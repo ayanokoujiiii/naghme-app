@@ -1,4 +1,5 @@
 import React, { useMemo } from 'react';
+import { TermehProvider } from '@/src/motifs/Termeh';
 import { Alert, SectionList, View } from 'react-native';
 import Animated from 'react-native-reanimated';
 import { C } from '@/src/theme';
@@ -32,6 +33,7 @@ export default function HistoryScreen() {
   }, [h.data]);
 
   return (
+    <TermehProvider pattern="ab">
     <View style={{ flex: 1, backgroundColor: C.bg }}>
       <Ambient intensity={0.6} />
       <Header
@@ -85,5 +87,6 @@ export default function HistoryScreen() {
         />
       )}
     </View>
+    </TermehProvider>
   );
 }

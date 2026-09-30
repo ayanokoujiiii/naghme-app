@@ -5,16 +5,17 @@ import { trChildren, useLang } from '../i18n';
 
 type Variant = 'display' | 'title' | 'h2' | 'h3' | 'body' | 'small' | 'caption' | 'label' | 'latin';
 
+// v1.1: everything about 12% larger for comfortable reading.
 const V: Record<Variant, TextStyle> = {
-  display: { fontFamily: F.light, fontSize: 38, lineHeight: 54, letterSpacing: -0.5 },
-  title: { fontFamily: F.medium, fontSize: 24, lineHeight: 38 },
-  h2: { fontFamily: F.medium, fontSize: 18, lineHeight: 30 },
-  h3: { fontFamily: F.medium, fontSize: 15, lineHeight: 25 },
-  body: { fontFamily: F.regular, fontSize: 14.5, lineHeight: 27 },
-  small: { fontFamily: F.regular, fontSize: 12.5, lineHeight: 21 },
-  caption: { fontFamily: F.regular, fontSize: 11, lineHeight: 18, letterSpacing: 0.2 },
-  label: { fontFamily: F.medium, fontSize: 11.5, lineHeight: 18, letterSpacing: 0.6 },
-  latin: { fontFamily: F.light, fontSize: 12.5, lineHeight: 19, letterSpacing: 0.4 },
+  display: { fontFamily: F.light, fontSize: 40, lineHeight: 58, letterSpacing: -0.5 },
+  title: { fontFamily: F.medium, fontSize: 26, lineHeight: 42 },
+  h2: { fontFamily: F.medium, fontSize: 20, lineHeight: 33 },
+  h3: { fontFamily: F.medium, fontSize: 16.5, lineHeight: 28 },
+  body: { fontFamily: F.regular, fontSize: 16, lineHeight: 30 },
+  small: { fontFamily: F.regular, fontSize: 14, lineHeight: 24 },
+  caption: { fontFamily: F.regular, fontSize: 12.5, lineHeight: 20, letterSpacing: 0.2 },
+  label: { fontFamily: F.bold, fontSize: 13, lineHeight: 21, letterSpacing: 0.4 },
+  latin: { fontFamily: F.light, fontSize: 14, lineHeight: 21, letterSpacing: 0.4 },
 };
 
 export interface TxtProps extends TextProps {

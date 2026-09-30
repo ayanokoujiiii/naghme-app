@@ -1,12 +1,13 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { ScrollView, StyleSheet, View, useWindowDimensions } from 'react-native';
+import { ScrollView, StyleSheet, TextInput, View, useWindowDimensions } from 'react-native';
 import { router } from 'expo-router';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Feather } from '@expo/vector-icons';
 import Animated, { Easing, FadeIn, FadeInDown, FadeOut, useAnimatedStyle, useSharedValue, withRepeat, withSpring, withTiming } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { C, roleLabel } from '@/src/theme';
+import { C, F, roleLabel } from '@/src/theme';
+import { LyricsView } from '@/src/ui/LyricsView';
 import { Txt } from '@/src/ui/Txt';
 import { Chip, IconBtn, Pressy, row, tap } from '@/src/ui/kit';
 import { Cover } from '@/src/ui/Media';
@@ -62,12 +63,12 @@ export default function Player() {
   const [pane, setPane] = useState<Pane>('lyrics');
   const [sleepOpen, setSleepOpen] = useState(false);
   const [fav, setFav] = useState(false);
+  const [lyricsOpen, setLyricsOpen] = useState(false);
+  const [customMin, setCustomMin] = useState('');
   // «کشش زمان»: while this screen is open and the music plays, time stretches everywhere.
   useDeepListening(s.playing);
   const stretch = useStretch();
   const float = useFloat(stretch);
-  const lyricScroll = useRef<ScrollView>(null);
-  const lineY = useRef<number[]>([]);
 
   useEffect(() => {
     if (!item) return;
@@ -84,9 +85,7 @@ export default function Player() {
 
   const lyrics = useMemo(() => parseLyrics(rec?.lyrics || rec?.workLyrics || item?.lyrics), [rec, item?.id]);
   const active = lyrics.synced ? activeLine(lyrics.lines, s.position) : -1;
-  useEffect(() => {
-    if (active >= 0 && lineY.current[active] !== undefined) lyricScroll.current?.scrollTo({ y: Math.max(0, lineY.current[active] - 80), animated: true });
-  }, [active]);
+  const lyricsSource = rec?.lyrics || rec?.workLyrics || item?.lyrics || null;
 
   const size = Math.min(width - 96, height * 0.36);
   const coverStyle = useAnimatedStyle(() => ({
@@ -118,7 +117,7 @@ export default function Player() {
         <View style={[row, { justifyContent: 'space-between', paddingHorizontal: 14 }]}>
           <IconBtn name="chevron-down" size={26} onPress={() => router.back()} label="بستن" />
           <View style={{ alignItems: 'center' }}>
-            <Txt v="label" center color={C.zar}>شنیدن ژرف</Txt>
+            <Txt v="label" center color={C.zarBright}>شنیدن ژرف</Txt>
             {stretch > 1 ? <Animated.View entering={FadeIn.duration(1600)} exiting={FadeOut.duration(900)}><Txt v="caption" center color={C.faint}>زمان کش می‌آید</Txt></Animated.View> : null}
             {rec ? <Txt v="caption" center color={C.faint}>{qualityLabel(rec)}</Txt> : null}
           </View>
@@ -163,14 +162,14 @@ export default function Player() {
         </View>
 
         <View style={styles.controls}>
-          <IconBtn name="shuffle" size={18} color={s.shuffle ? C.accent : C.faint} onPress={toggleShuffle} label="تصادفی" />
+          <IconBtn name="shuffle" size={18} color={s.shuffle ? C.zarBright : C.dim} onPress={toggleShuffle} label="تصادفی" />
           <IconBtn name="skip-back" size={26} onPress={() => void previous()} label="قبلی" />
           <Pressy onPress={() => { tap('medium'); void togglePlay(); }} scaleTo={0.9} style={styles.play}>
             <Feather name={s.playing ? 'pause' : 'play'} size={30} color="#141312" style={s.playing ? undefined : { marginLeft: 3 }} />
           </Pressy>
           <IconBtn name="skip-forward" size={26} onPress={() => void next()} label="بعدی" />
           <Pressy onPress={cycleRepeat} scaleTo={0.88} style={{ width: 42, height: 42, alignItems: 'center', justifyContent: 'center' }}>
-            <Feather name="repeat" size={18} color={s.repeat !== 'off' ? C.accent : C.faint} />
+            <Feather name="repeat" size={18} color={s.repeat !== 'off' ? C.zarBright : C.dim} />
             {s.repeat === 'one' ? <Txt v="caption" color={C.accent} style={styles.one}>۱</Txt> : null}
           </Pressy>
         </View>
@@ -181,9 +180,30 @@ export default function Player() {
         </View>
         {sleepOpen ? (
           <Animated.View entering={FadeInDown} style={[row, { justifyContent: 'center', flexWrap: 'wrap', gap: 8, marginTop: 10, paddingHorizontal: 20 }]}>
-            {[15, 30, 45, 60].map((m) => (
+            {[10, 15, 30, 45, 60, 90].map((m) => (
               <Chip key={m} label={`${toFa(m)} دقیقه`} onPress={() => { setSleep(m); setSleepOpen(false); }} />
             ))}
+            <View style={[row, styles.customSleep]}>
+              <TextInput
+                value={customMin}
+                onChangeText={(t) => setCustomMin(t.replace(/[^0-9۰-۹]/g, '').slice(0, 3))}
+                keyboardType="number-pad"
+                placeholder="دلخواه"
+                placeholderTextColor={C.faint}
+                style={styles.customInput}
+              />
+              <Txt v="small" color={C.dim}>دقیقه</Txt>
+              <Pressy
+                onPress={() => {
+                  const n = Number(customMin.replace(/[۰-۹]/g, (d) => String('۰۱۲۳۴۵۶۷۸۹'.indexOf(d))));
+                  if (n > 0) { setSleep(n); setSleepOpen(false); setCustomMin(''); }
+                }}
+                style={styles.customOk}
+                scaleTo={0.9}
+              >
+                <Feather name="check" size={16} color="#1A1410" />
+              </Pressy>
+            </View>
             <Chip label="پایان قطعه" onPress={() => { setSleep('track'); setSleepOpen(false); }} />
             {sleepLabel ? <Chip label="انصراف" onPress={() => { setSleep(null); setSleepOpen(false); }} /> : null}
           </Animated.View>
@@ -198,30 +218,22 @@ export default function Player() {
         <Animated.View key={pane} entering={FadeIn.duration(400)} style={styles.pane}>
           {pane === 'lyrics' ? (
             lyrics.lines.length ? (
-              <ScrollView ref={lyricScroll} nestedScrollEnabled style={{ maxHeight: 340 }} contentContainerStyle={{ paddingVertical: 16 }}>
-                {lyrics.lines.map((l, i) => (
-                  <Pressy
-                    key={i}
-                    haptic={false}
-                    scaleTo={0.99}
-                    onPress={() => l.t !== null && void seek(l.t)}
-                    onLayout={(e) => { lineY.current[i] = e.nativeEvent.layout.y; }}
-                  >
-                    <Txt
-                      v={lyrics.synced ? 'h3' : 'body'}
-                      center
-                      color={!lyrics.synced ? C.text : i === active ? C.text : 'rgba(236,232,225,0.35)'}
-                      style={{ paddingVertical: lyrics.synced ? 6 : 1, fontSize: lyrics.synced ? (i === active ? 18 : 15) : 15, lineHeight: 30 }}
-                    >
-                      {l.text || ' '}
-                    </Txt>
-                  </Pressy>
+              <Pressy onPress={() => setLyricsOpen(true)} haptic={false} scaleTo={0.99} style={{ paddingVertical: 16, paddingHorizontal: 12 }}>
+                {(lyrics.synced && active >= 0 ? lyrics.lines.slice(Math.max(0, active - 1), Math.max(0, active - 1) + 6) : lyrics.lines.slice(0, 6)).map((l, i) => (
+                  <Txt key={i} v="body" center color={lyrics.synced && l === lyrics.lines[active] ? C.zarBright : C.text} style={{ lineHeight: 32 }}>{l.text || ' '}</Txt>
                 ))}
-              </ScrollView>
+                <View style={[row, { justifyContent: 'center', gap: 6, marginTop: 10 }]}>
+                  <Feather name="maximize-2" size={15} color={C.zarBright} />
+                  <Txt v="small" color={C.zarBright}>{lyrics.synced ? 'متن همگام، تمام‌صفحه' : `همهٔ متن (${toFa(lyrics.lines.length)} خط)`}</Txt>
+                </View>
+              </Pressy>
             ) : (
-              <View style={{ padding: 24, alignItems: 'center' }}>
+              <View style={{ padding: 24, alignItems: 'center', gap: 10 }}>
                 <Txt v="small" center>متنی برای این قطعه ثبت نشده.</Txt>
-                <Chip label="افزودن متن" icon="edit-2" onPress={() => router.push({ pathname: '/edit/recording', params: { id: item.id } })} />
+                <View style={[row, { gap: 8 }]}>
+                  <Chip label="افزودن متن" icon="edit-2" onPress={() => router.push({ pathname: '/edit/recording', params: { id: item.id } })} />
+                  <Chip label="فایل LRC" icon="file-text" onPress={() => setLyricsOpen(true)} />
+                </View>
               </View>
             )
           ) : pane === 'credits' ? (
@@ -254,6 +266,7 @@ export default function Player() {
         </Animated.View>
         {s.error ? <Txt v="small" center color={C.danger} style={{ marginTop: 12 }}>{s.error}</Txt> : null}
       </ScrollView>
+      {lyricsOpen ? <LyricsView recordingId={item.id} source={lyricsSource} title={item.title} onClose={() => setLyricsOpen(false)} /> : null}
     </View>
   );
 }
@@ -262,6 +275,9 @@ const styles = StyleSheet.create({
   coverShadow: { shadowColor: '#000', shadowOpacity: 0.6, shadowRadius: 30, shadowOffset: { width: 0, height: 18 }, elevation: 24, borderRadius: 28 },
   controls: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 26, marginTop: 8 },
   play: { width: 76, height: 76, borderRadius: 38, backgroundColor: C.text, alignItems: 'center', justifyContent: 'center' },
-  one: { position: 'absolute', top: 4, right: 6, fontSize: 9 },
+  one: { position: 'absolute', top: 4, right: 6, fontSize: 10 },
+  customSleep: { gap: 8, paddingHorizontal: 10, height: 38, borderRadius: 19, borderWidth: 1, borderColor: C.lineStrong, backgroundColor: 'rgba(255,240,220,0.07)' },
+  customInput: { minWidth: 52, color: C.text, fontFamily: F.medium, fontSize: 15, textAlign: 'center', paddingVertical: 0 },
+  customOk: { width: 28, height: 28, borderRadius: 14, backgroundColor: C.zarBright, alignItems: 'center', justifyContent: 'center' },
   pane: { marginHorizontal: 16, marginTop: 14, borderRadius: 24, backgroundColor: 'rgba(255,255,255,0.035)', borderWidth: StyleSheet.hairlineWidth, borderColor: C.line, minHeight: 120 },
 });

@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { TermehProvider } from '@/src/motifs/Termeh';
 import { Alert, ScrollView, View } from 'react-native';
 import { router } from 'expo-router';
 import Constants from 'expo-constants';
@@ -95,6 +96,7 @@ export default function SettingsScreen() {
   };
 
   return (
+    <TermehProvider pattern="gereh">
     <View style={{ flex: 1 }}>
       <Ambient intensity={0.5} />
       <Header title="تنظیمات" />
@@ -136,7 +138,7 @@ export default function SettingsScreen() {
             <Field label="کلید Gemini (اختیاری)" value={key} onChangeText={setKey} ltr autoCapitalize="none" autoCorrect={false} secureTextEntry placeholder={tr("کلید را اینجا بچسبان")} hint="رایگان از aistudio.google.com گرفته می‌شود. فقط روی همین گوشی ذخیره می‌شود." />
             <View style={[row, { gap: 10 }]}>
               <Button label="ذخیره" onPress={async () => { await setSetting('geminiKey', key.trim() || null); Alert.alert('ذخیره شد'); }} style={{ flex: 1 }} />
-              <Button label="گفت‌وگو" icon="message-circle" kind="ghost" onPress={() => router.push('/ask')} style={{ flex: 1 }} />
+              <Button label="گفت‌وگو" icon="message-circle" kind="ghost" onPress={() => router.navigate('/chat')} style={{ flex: 1 }} />
             </View>
             <View style={[row, { justifyContent: 'space-between', marginTop: 16 }]}>
               <Txt v="label">مدل</Txt>
@@ -155,7 +157,7 @@ export default function SettingsScreen() {
             <LinkRow icon="book-open" title="یادداشت‌ها" hint="دفتر شنیدن" onPress={() => router.push('/journal')} />
             <LinkRow icon="clock" title="تاریخچهٔ شنیدن" hint="هر چه شنیده‌ای، ماه به ماه" onPress={() => router.push('/history')} />
             <LinkRow icon="image" title="کارت‌پستال‌ها" hint="عکس‌نوشته از بیت‌ها و قطعه‌های محبوبت" onPress={() => router.push('/postcards')} />
-            <LinkRow icon="message-circle" title="گفت‌وگوهای ذخیره‌شده" hint="ادامهٔ پرسش‌های پیشین" onPress={() => router.push('/ask')} />
+            <LinkRow icon="message-circle" title="گفت‌وگوهای ذخیره‌شده" hint="ادامهٔ پرسش‌های پیشین" onPress={() => router.navigate('/chat')} />
             <LinkRow icon="star" title="افزودن نمونهٔ آغازین" hint="چند هنرمند و اثر شناخته‌شده برای شروع (تکراری اضافه نمی‌شود)" onPress={() => run('seed', seedStarter)} />
             <View style={[row, { justifyContent: 'space-between', marginTop: 10 }]}>
               <Txt v="small">موسیقی</Txt><Txt v="small" color={C.text}>{mb(sizes.music)}</Txt>
@@ -180,5 +182,6 @@ export default function SettingsScreen() {
         </View>
       </ScrollView>
     </View>
+    </TermehProvider>
   );
 }

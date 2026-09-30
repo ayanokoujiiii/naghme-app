@@ -1,4 +1,5 @@
 import React from 'react';
+import { TermehProvider } from '../motifs/Termeh';
 import { KeyboardAvoidingView, ScrollView, View } from 'react-native';
 import { C } from '../theme';
 import { Ambient } from './Ambient';
@@ -9,6 +10,7 @@ export function EditorShell({ title, subtitle, loading, saving, canSave = true, 
   title: string; subtitle?: string; loading?: boolean; saving?: boolean; canSave?: boolean; onSave: () => void; saveLabel?: string; children?: React.ReactNode; right?: React.ReactNode;
 }) {
   return (
+    <TermehProvider pattern="gereh">
     <KeyboardAvoidingView style={{ flex: 1, backgroundColor: C.bg }} behavior="padding">
       <Ambient intensity={0.5} />
       <Header title={title} subtitle={subtitle} right={right} />
@@ -23,5 +25,6 @@ export function EditorShell({ title, subtitle, loading, saving, canSave = true, 
         </>
       )}
     </KeyboardAvoidingView>
+    </TermehProvider>
   );
 }

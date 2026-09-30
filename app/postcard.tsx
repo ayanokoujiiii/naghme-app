@@ -114,9 +114,9 @@ export default function PostcardEditor() {
         </View>
 
         <TextInput value={text} onChangeText={setText} multiline placeholder={tr("متن کارت: بیت، جمله یا یادداشت…")} placeholderTextColor={C.faint}
-          style={{ marginTop: 14, minHeight: 70, borderRadius: 16, padding: 14, backgroundColor: C.surface, color: C.text, fontFamily: F.regular, fontSize: 14.5, textAlign: 'right', writingDirection: 'rtl' }} />
+          style={{ marginTop: 14, minHeight: 70, borderRadius: 16, padding: 14, backgroundColor: C.surface, color: C.text, fontFamily: F.regular, fontSize: 16, textAlign: 'right', writingDirection: 'rtl' }} />
         <TextInput value={s.caption} onChangeText={(t) => set({ caption: t })} placeholder={tr("زیرنویس (نام قطعه و هنرمند)")} placeholderTextColor={C.faint}
-          style={{ marginTop: 8, borderRadius: 14, padding: 12, backgroundColor: C.surface, color: C.text, fontFamily: F.regular, fontSize: 13, textAlign: 'right' }} />
+          style={{ marginTop: 8, borderRadius: 14, padding: 12, backgroundColor: C.surface, color: C.text, fontFamily: F.regular, fontSize: 14.5, textAlign: 'right' }} />
 
         <FormSection title="اندازهٔ کارت">
           <View style={[row, { gap: 8 }]}>{RATIOS.map((r) => <Chip key={r.k} label={r.label} active={s.ratio === r.k} onPress={() => set({ ratio: r.k })} />)}</View>

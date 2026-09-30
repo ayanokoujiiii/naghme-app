@@ -502,6 +502,13 @@ export async function toggleFavorite(id: string): Promise<boolean> {
   return !!r?.favorite;
 }
 
+/** v1.1: store lyrics (plain or LRC-synced) for one recording. */
+export async function setRecordingLyrics(id: string, lyrics: string | null) {
+  const db = await getDb();
+  await db.runAsync('UPDATE recordings SET lyrics = ? WHERE id = ?', [lyrics, id]);
+  notifyChange();
+}
+
 export async function setDuration(id: string, duration: number) {
   const db = await getDb();
   await db.runAsync('UPDATE recordings SET duration = ? WHERE id = ? AND (duration IS NULL OR duration = 0)', [duration, id]);

@@ -1,22 +1,33 @@
 import React, { useCallback, useEffect, useImperativeHandle, useMemo, forwardRef } from 'react';
 import { StyleSheet, View, useWindowDimensions } from 'react-native';
-import { BlurStyle, Canvas, PaintStyle, Picture, PointMode, Skia, StrokeCap, TileMode, createPicture } from '@shopify/react-native-skia';
+import Svg, { Circle, Defs, Path, RadialGradient, Stop } from 'react-native-svg';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
-  Easing, SharedValue, cancelAnimation, runOnJS, useAnimatedStyle, useDerivedValue, useFrameCallback, useSharedValue, withDecay, withTiming,
+  Easing, SharedValue, cancelAnimation, runOnJS, useAnimatedStyle, useFrameCallback, useSharedValue, withDecay, withTiming,
 } from 'react-native-reanimated';
 import { F } from '../theme';
 import { ARM_COLORS, GalaxyModel } from './layout';
 
+/**
+ * The galaxy of artists.
+ * v1.1: rebuilt without a drawing canvas (the old one crashed on Android).
+ *  - the spiral disc (dust + nebula glow) is drawn ONCE as SVG, then tilted and
+ *    turned by native 3D transforms that follow exactly the same camera maths
+ *    as the stars, so the GPU does all the moving;
+ *  - every artist, link and label is a small native view positioned on the UI
+ *    thread each frame.
+ */
 const CAM = 820;
 const EASE = Easing.inOut(Easing.cubic);
+const DISC_R = 430; // world units covered by the dust disc
+const NODE_BASE = 40; // base pixel size of a star view (scaled per star)
 
 type Cam = {
   yaw: SharedValue<number>; spin: SharedValue<number>; pitch: SharedValue<number>; zoom: SharedValue<number>;
-  fx: SharedValue<number>; fy: SharedValue<number>; fz: SharedValue<number>;
+  fx: SharedValue<number>; fy: SharedValue<number>; fz: SharedValue<number>; intro: SharedValue<number>;
 };
 
-/** Perspective projection shared by the canvas, labels and hit-testing. Returns [sx, sy, scale, depth]. */
+/** Perspective projection shared by stars, links, labels and hit-testing. Returns [sx, sy, scale, depth]. */
 function project(x: number, y: number, z: number, yaw: number, pitch: number, zoom: number, fx: number, fy: number, fz: number, W: number, H: number, focal: number): number[] {
   'worklet';
   const dx = x - fx, dy = y - fy, dz = z - fz;
@@ -32,6 +43,11 @@ function project(x: number, y: number, z: number, yaw: number, pitch: number, zo
   return [W / 2 + x1 * s, H * 0.47 + y1 * s, s, depth];
 }
 
+function camZoom(c: Cam) {
+  'worklet';
+  return c.zoom.value * (0.55 + 0.45 * c.intro.value);
+}
+
 export interface GalaxyHandle { focus: (index: number | null) => void; reset: () => void }
 
 interface Props {
@@ -42,6 +58,13 @@ interface Props {
   labelSet: number[];
   onSelect: (index: number | null) => void;
   active: boolean;
+}
+
+/** Many tiny circles merged into one SVG path per colour bin: a single draw call. */
+function dotsPath(pts: number[][], r: number): string {
+  let d = '';
+  for (const [x, y] of pts) d += `M${(x - r).toFixed(1)} ${y.toFixed(1)}a${r} ${r} 0 1 0 ${2 * r} 0a${r} ${r} 0 1 0 ${-2 * r} 0`;
+  return d;
 }
 
 export const GalaxyView = forwardRef<GalaxyHandle, Props>(function GalaxyView({ model, selected, filter, satellites, labelSet, onSelect, active }, ref) {
@@ -60,10 +83,10 @@ export const GalaxyView = forwardRef<GalaxyHandle, Props>(function GalaxyView({ 
   const sel = useSharedValue(-1);
   const filt = useSharedValue(0);
   const intro = useSharedValue(0);
-  const cam: Cam = { yaw, spin, pitch, zoom, fx, fy, fz };
+  const cam: Cam = { yaw, spin, pitch, zoom, fx, fy, fz, intro };
 
   useEffect(() => {
-    intro.value = withTiming(1, { duration: 2200, easing: Easing.out(Easing.cubic) });
+    intro.value = withTiming(1, { duration: 2000, easing: Easing.out(Easing.cubic) });
   }, []);
   useEffect(() => { sel.value = selected ?? -1; }, [selected]);
   useEffect(() => { filt.value = filter; }, [filter]);
@@ -76,208 +99,79 @@ export const GalaxyView = forwardRef<GalaxyHandle, Props>(function GalaxyView({ 
 
   const focusIndex = useCallback((i: number | null) => {
     if (i === null || !model.nodes[i]) {
-      fx.value = withTiming(0, { duration: 1200, easing: EASE });
-      fy.value = withTiming(0, { duration: 1200, easing: EASE });
-      fz.value = withTiming(0, { duration: 1200, easing: EASE });
-      zoom.value = withTiming(1, { duration: 1300, easing: EASE });
+      fx.value = withTiming(0, { duration: 1100, easing: EASE });
+      fy.value = withTiming(0, { duration: 1100, easing: EASE });
+      fz.value = withTiming(0, { duration: 1100, easing: EASE });
+      zoom.value = withTiming(1, { duration: 1200, easing: EASE });
       return;
     }
     const n = model.nodes[i];
-    fx.value = withTiming(n.x, { duration: 1300, easing: EASE });
-    fy.value = withTiming(n.y, { duration: 1300, easing: EASE });
-    fz.value = withTiming(n.z, { duration: 1300, easing: EASE });
-    zoom.value = withTiming(2.6, { duration: 1400, easing: EASE });
+    fx.value = withTiming(n.x, { duration: 1200, easing: EASE });
+    fy.value = withTiming(n.y, { duration: 1200, easing: EASE });
+    fz.value = withTiming(n.z, { duration: 1200, easing: EASE });
+    zoom.value = withTiming(2.4, { duration: 1300, easing: EASE });
   }, [model]);
 
   useImperativeHandle(ref, () => ({
     focus: focusIndex,
     reset: () => {
       focusIndex(null);
-      pitch.value = withTiming(1.02, { duration: 1200, easing: EASE });
+      pitch.value = withTiming(1.02, { duration: 1100, easing: EASE });
     },
   }), [focusIndex]);
 
-  // Flatten model into plain arrays the UI thread can read.
-  const data = useMemo(() => ({
+  const nodeData = useMemo(() => ({
     nx: model.nodes.map((n) => n.x), ny: model.nodes.map((n) => n.y), nz: model.nodes.map((n) => n.z),
     ns: model.nodes.map((n) => n.size),
     nt: model.nodes.map((n) => (n.tradition === 'persian' ? 0 : n.tradition === 'classical' ? 1 : 2)),
-    ea: model.edges.map((e) => e.a), eb: model.edges.map((e) => e.b), ei: model.edges.map((e) => (e.implicit ? 1 : 0)),
-    dust: Array.from(model.dust), stars: Array.from(model.stars),
   }), [model]);
-  const nodeData = useMemo(() => ({ nx: data.nx, ny: data.ny, nz: data.nz, ns: data.ns, nt: data.nt }), [data]);
-  const satCount = satellites.length;
 
-  const picture = useDerivedValue(() => {
-    const yawV = yaw.value + spin.value;
-    const pit = pitch.value;
-    const zm = zoom.value * (0.55 + 0.45 * intro.value);
-    const fxv = fx.value, fyv = fy.value, fzv = fz.value;
-    const t = clock.value;
-    const s = sel.value;
-    const fl = filt.value;
-    const { nx, ny, nz, ns, nt, ea, eb, ei, dust, stars } = data;
+  // ---- The disc: drawn once in world units (x → right, z → up) ----
+  const D = DISC_R * 2;
+  const disc = useMemo(() => {
+    const bins: number[][][] = [[], [], [], [], [], []];
+    const d = model.dust;
+    for (let i = 0; i < d.length; i += 4) {
+      const arm = d[i + 3];
+      const big = i % 12 === 0 ? 1 : 0;
+      bins[arm * 2 + big].push([DISC_R + d[i], DISC_R - d[i + 2]]);
+    }
+    return bins.map((pts, k) => ({ d: dotsPath(pts, k % 2 ? 2.4 : 1.4), color: ARM_COLORS[Math.floor(k / 2)], big: k % 2 === 1, arm: Math.floor(k / 2) }));
+  }, [model]);
 
-    return createPicture((canvas) => {
-      const p = Skia.Paint();
-      p.setColor(Skia.Color('#060608'));
-      canvas.drawRect(Skia.XYWHRect(0, 0, W, H), p);
+  const stars = useMemo(() => {
+    const pts: number[][] = [];
+    const dim: number[][] = [];
+    let s = 7;
+    const rnd = () => ((s = (s * 16807) % 2147483647) / 2147483647);
+    for (let i = 0; i < 240; i++) (rnd() > 0.6 ? pts : dim).push([rnd() * W, rnd() * H]);
+    return { bright: dotsPath(pts, 1.1), dim: dotsPath(dim, 0.7) };
+  }, [W, H]);
 
-      // Nebula glows around the galactic core and along both arms
-      const glow = (wx: number, wy: number, wz: number, radius: number, color: string, alpha: number) => {
-        const q = project(wx, wy, wz, yawV, pit, zm, fxv, fyv, fzv, W, H, focal);
-        if (q[3] < 0) return;
-        const r = radius * q[2];
-        const g = Skia.Paint();
-        g.setShader(Skia.Shader.MakeRadialGradient(Skia.Point(q[0], q[1]), Math.max(8, r), [Skia.Color(color), Skia.Color('rgba(0,0,0,0)')], null, TileMode.Clamp));
-        g.setAlphaf(alpha);
-        canvas.drawCircle(q[0], q[1], Math.max(8, r), g);
-      };
-      glow(0, 0, 0, 260, '#E9DFCF', 0.22);
-      glow(170, 0, 120, 300, ARM_COLORS[0], fl === 2 ? 0.05 : 0.16);
-      glow(-170, 0, -120, 300, ARM_COLORS[1], fl === 1 ? 0.05 : 0.16);
-      glow(0, 0, 0, 70, '#FFF6E6', 0.35);
+  const discStyle = useAnimatedStyle(() => {
+    const zm = camZoom(cam);
+    const s0 = (focal * zm) / CAM;
+    // fade the dust when we fly close to a star, so perspective never inverts
+    const op = Math.max(0.2, Math.min(1, 1.35 - (zoom.value - 1) * 0.55)) * intro.value;
+    return {
+      opacity: op,
+      transform: [
+        { perspective: focal },
+        { rotateX: `${Math.PI / 2 - pitch.value}rad` },
+        { rotateZ: `${-(yaw.value + spin.value)}rad` },
+        { scale: s0 },
+        { translateX: -fx.value },
+        { translateY: fz.value },
+      ],
+    };
+  });
 
-      // Distant stars (parallax: only rotation, reduced translation)
-      const starPts: any[] = [];
-      const starPtsDim: any[] = [];
-      for (let i = 0; i < stars.length; i += 4) {
-        const q = project(stars[i], stars[i + 1], stars[i + 2], yawV * 0.6, pit * 0.8, 1, fxv * 0.1, fyv * 0.1, fzv * 0.1, W, H, focal * 0.9);
-        if (q[3] < 0 || q[0] < -10 || q[0] > W + 10 || q[1] < -10 || q[1] > H + 10) continue;
-        const tw = stars[i + 3] * (0.75 + 0.25 * Math.sin(t * 1.3 + i));
-        (tw > 0.55 ? starPts : starPtsDim).push(Skia.Point(q[0], q[1]));
-      }
-      const sp = Skia.Paint();
-      sp.setStrokeCap(StrokeCap.Round);
-      sp.setColor(Skia.Color('#FFFFFF'));
-      sp.setStrokeWidth(1.6);
-      sp.setAlphaf(0.55);
-      canvas.drawPoints(PointMode.Points, starPts, sp);
-      sp.setStrokeWidth(1.1);
-      sp.setAlphaf(0.25);
-      canvas.drawPoints(PointMode.Points, starPtsDim, sp);
+  const starsStyle = useAnimatedStyle(() => ({
+    opacity: 0.75 + 0.25 * Math.sin(clock.value * 0.7),
+    transform: [{ rotate: `${-(yaw.value + spin.value) * 0.08}rad` }, { scale: 1.2 }],
+  }));
 
-      // Spiral dust, three depth bins per arm colour
-      const bins: any[][] = [[], [], [], [], [], [], [], [], []];
-      for (let i = 0; i < dust.length; i += 4) {
-        const q = project(dust[i], dust[i + 1], dust[i + 2], yawV, pit, zm, fxv, fyv, fzv, W, H, focal);
-        if (q[3] < 0 || q[0] < -20 || q[0] > W + 20 || q[1] < -20 || q[1] > H + 20) continue;
-        const arm = dust[i + 3];
-        const b = q[2] > 1.9 ? 2 : q[2] > 1.2 ? 1 : 0;
-        bins[arm * 3 + b].push(Skia.Point(q[0], q[1]));
-      }
-      const dp = Skia.Paint();
-      dp.setStrokeCap(StrokeCap.Round);
-      for (let arm = 0; arm < 3; arm++) {
-        const dim = (fl === 1 && arm === 1) || (fl === 2 && arm === 0) ? 0.25 : 1;
-        dp.setColor(Skia.Color(ARM_COLORS[arm]));
-        for (let b = 0; b < 3; b++) {
-          dp.setStrokeWidth(1.2 + b * 0.9);
-          dp.setAlphaf((0.22 + b * 0.16) * dim * intro.value);
-          canvas.drawPoints(PointMode.Points, bins[arm * 3 + b], dp);
-        }
-      }
-
-      // Project nodes
-      const n = nx.length;
-      const px = new Array(n), py = new Array(n), ps = new Array(n), pd = new Array(n);
-      for (let i = 0; i < n; i++) {
-        const q = project(nx[i], ny[i], nz[i], yawV, pit, zm, fxv, fyv, fzv, W, H, focal);
-        px[i] = q[0]; py[i] = q[1]; ps[i] = q[2]; pd[i] = q[3];
-      }
-      const dimmed = (i: number) => (fl === 1 && nt[i] !== 0) || (fl === 2 && nt[i] !== 1);
-
-      // Constellation lines
-      const lp = Skia.Paint();
-      lp.setStyle(PaintStyle.Stroke);
-      lp.setStrokeCap(StrokeCap.Round);
-      for (let k = 0; k < ea.length; k++) {
-        const a = ea[k], b = eb[k];
-        if (pd[a] < 0 || pd[b] < 0) continue;
-        const hot = s >= 0 && (a === s || b === s);
-        const faint = dimmed(a) && dimmed(b);
-        lp.setColor(Skia.Color(hot ? '#F3EADB' : ARM_COLORS[nt[a]]));
-        lp.setStrokeWidth(hot ? 1.4 : ei[k] ? 0.5 : 0.8);
-        lp.setAlphaf((hot ? 0.75 : s >= 0 ? 0.08 : ei[k] ? 0.12 : 0.22) * (faint ? 0.3 : 1) * intro.value);
-        canvas.drawLine(px[a], py[a], px[b], py[b], lp);
-        if (hot) {
-          // light pulses travelling along the link
-          const pp = Skia.Paint();
-          pp.setColor(Skia.Color('#FFF7EA'));
-          pp.setMaskFilter(Skia.MaskFilter.MakeBlur(BlurStyle.Normal, 3, true));
-          for (let m = 0; m < 2; m++) {
-            const u = (t * 0.32 + m * 0.5 + k * 0.13) % 1;
-            const from = a === s ? a : b, to = a === s ? b : a;
-            canvas.drawCircle(px[from] + (px[to] - px[from]) * u, py[from] + (py[to] - py[from]) * u, 2.4, pp);
-          }
-        }
-      }
-
-      // Stars (artists), far to near
-      const order = Array.from({ length: n }, (_, i) => i).sort((i, j) => pd[j] - pd[i]);
-      const gp = Skia.Paint();
-      const cp = Skia.Paint();
-      for (let o = 0; o < order.length; o++) {
-        const i = order[o];
-        if (pd[i] < 0) continue;
-        const r = ns[i] * ps[i] * (0.4 + 0.6 * intro.value);
-        if (px[i] < -r * 4 || px[i] > W + r * 4 || py[i] < -r * 4 || py[i] > H + r * 4) continue;
-        const isSel = i === s;
-        const dimK = dimmed(i) ? 0.25 : s >= 0 && !isSel ? 0.7 : 1;
-        const twinkle = 0.85 + 0.15 * Math.sin(t * 2 + i * 1.7);
-        const col = Skia.Color(ARM_COLORS[nt[i]]);
-        gp.setColor(col);
-        gp.setMaskFilter(Skia.MaskFilter.MakeBlur(BlurStyle.Normal, Math.max(2, r * 1.3), true));
-        gp.setAlphaf(0.45 * dimK * twinkle);
-        canvas.drawCircle(px[i], py[i], r * 2.2, gp);
-        cp.setColor(col);
-        cp.setAlphaf(0.95 * dimK);
-        canvas.drawCircle(px[i], py[i], r, cp);
-        cp.setColor(Skia.Color('#FFFDF8'));
-        cp.setAlphaf(0.9 * dimK);
-        canvas.drawCircle(px[i], py[i], Math.max(0.8, r * 0.38), cp);
-        if (isSel) {
-          const rp = Skia.Paint();
-          rp.setStyle(PaintStyle.Stroke);
-          rp.setColor(Skia.Color('#F3EADB'));
-          rp.setStrokeWidth(1);
-          const pulse = (t * 0.6) % 1;
-          rp.setAlphaf(0.6 * (1 - pulse));
-          canvas.drawCircle(px[i], py[i], r * (1.8 + pulse * 3.5), rp);
-          rp.setAlphaf(0.35);
-          canvas.drawCircle(px[i], py[i], r * 1.7, rp);
-        }
-      }
-
-      // Works orbiting the selected artist
-      if (s >= 0 && satCount > 0 && pd[s] >= 0) {
-        const op = Skia.Paint();
-        op.setStyle(PaintStyle.Stroke);
-        op.setStrokeWidth(0.7);
-        op.setColor(Skia.Color('#E9DFCF'));
-        const sp2 = Skia.Paint();
-        sp2.setColor(Skia.Color('#F6EFE4'));
-        for (let k = 0; k < Math.min(satCount, 8); k++) {
-          const R = ns[s] * 2.4 + 10 + k * 7;
-          const path = Skia.Path.Make();
-          for (let a = 0; a <= 48; a++) {
-            const th = (a / 48) * Math.PI * 2;
-            const q = project(nx[s] + Math.cos(th) * R, ny[s], nz[s] + Math.sin(th) * R, yawV, pit, zm, fxv, fyv, fzv, W, H, focal);
-            if (a === 0) path.moveTo(q[0], q[1]); else path.lineTo(q[0], q[1]);
-          }
-          op.setAlphaf(0.16);
-          canvas.drawPath(path, op);
-          const th = t * (0.55 - k * 0.04) + k * 2.1;
-          const q = project(nx[s] + Math.cos(th) * R, ny[s], nz[s] + Math.sin(th) * R, yawV, pit, zm, fxv, fyv, fzv, W, H, focal);
-          sp2.setMaskFilter(Skia.MaskFilter.MakeBlur(BlurStyle.Normal, 2, true));
-          sp2.setAlphaf(0.9);
-          canvas.drawCircle(q[0], q[1], Math.max(1.6, 1.3 * q[2]), sp2);
-        }
-      }
-    }, Skia.XYWHRect(0, 0, W, H));
-  }, [data, W, H, satCount]);
-
-  // Gestures
+  // ---- Gestures ----
   const pan = Gesture.Pan()
     .onBegin(() => {
       touching.value = 1;
@@ -285,7 +179,7 @@ export const GalaxyView = forwardRef<GalaxyHandle, Props>(function GalaxyView({ 
     })
     .onChange((e) => {
       yaw.value -= e.changeX * 0.0055;
-      pitch.value = Math.min(1.5, Math.max(0.12, pitch.value - e.changeY * 0.004));
+      pitch.value = Math.min(1.5, Math.max(0.15, pitch.value - e.changeY * 0.004));
     })
     .onEnd((e) => {
       yaw.value = withDecay({ velocity: -e.velocityX * 0.0055, deceleration: 0.994 });
@@ -296,21 +190,22 @@ export const GalaxyView = forwardRef<GalaxyHandle, Props>(function GalaxyView({ 
   const pinch = Gesture.Pinch()
     .onBegin(() => { touching.value = 1; })
     .onChange((e) => {
-      zoom.value = Math.min(5, Math.max(0.45, zoom.value * e.scaleChange));
+      zoom.value = Math.min(4, Math.max(0.5, zoom.value * e.scaleChange));
     })
     .onFinalize(() => { touching.value = 0; });
 
   const hitTest = (x: number, y: number) => {
     'worklet';
     const yawV = yaw.value + spin.value;
+    const zm = camZoom(cam);
     let best = -1;
     let bestD = 1e9;
     const nd = nodeData;
     for (let i = 0; i < nd.nx.length; i++) {
-      const q = project(nd.nx[i], nd.ny[i], nd.nz[i], yawV, pitch.value, zoom.value, fx.value, fy.value, fz.value, W, H, focal);
+      const q = project(nd.nx[i], nd.ny[i], nd.nz[i], yawV, pitch.value, zm, fx.value, fy.value, fz.value, W, H, focal);
       if (q[3] < 0) continue;
       const d = Math.hypot(q[0] - x, q[1] - y);
-      const lim = Math.max(24, nd.ns[i] * q[2] * 2.2);
+      const lim = Math.max(26, nd.ns[i] * q[2] * 2.4);
       if (d < lim && d < bestD) { bestD = d; best = i; }
     }
     return best;
@@ -324,15 +219,72 @@ export const GalaxyView = forwardRef<GalaxyHandle, Props>(function GalaxyView({ 
   });
   const gesture = Gesture.Simultaneous(pan, pinch, Gesture.Exclusive(double, single));
 
+  const dimmedJS = (i: number) => (filter === 1 && nodeData.nt[i] !== 0) || (filter === 2 && nodeData.nt[i] !== 1);
+
   return (
     <GestureDetector gesture={gesture}>
-      <View style={StyleSheet.absoluteFill} collapsable={false}>
-        <Canvas style={StyleSheet.absoluteFill}>
-          <Picture picture={picture} />
-        </Canvas>
+      <View style={[StyleSheet.absoluteFill, { backgroundColor: '#050507', overflow: 'hidden' }]} collapsable={false}>
+        {/* distant stars */}
+        <Animated.View style={[StyleSheet.absoluteFill, starsStyle]} pointerEvents="none" renderToHardwareTextureAndroid>
+          <Svg width={W} height={H}>
+            <Path d={stars.dim} fill="#FFFFFF" fillOpacity={0.35} />
+            <Path d={stars.bright} fill="#FFFFFF" fillOpacity={0.8} />
+          </Svg>
+        </Animated.View>
+
+        {/* the spiral disc */}
+        <Animated.View
+          pointerEvents="none"
+          renderToHardwareTextureAndroid
+          style={[{ position: 'absolute', width: D, height: D, left: W / 2 - D / 2, top: H * 0.47 - D / 2 }, discStyle]}
+        >
+          <Svg width={D} height={D}>
+            <Defs>
+              <RadialGradient id="gcore" cx="50%" cy="50%" r="50%">
+                <Stop offset="0" stopColor="#FFF6E6" stopOpacity={0.75} />
+                <Stop offset="0.3" stopColor="#E9DFCF" stopOpacity={0.3} />
+                <Stop offset="1" stopColor="#E9DFCF" stopOpacity={0} />
+              </RadialGradient>
+              <RadialGradient id="garm0" cx="50%" cy="50%" r="50%">
+                <Stop offset="0" stopColor={ARM_COLORS[0]} stopOpacity={0.32} />
+                <Stop offset="1" stopColor={ARM_COLORS[0]} stopOpacity={0} />
+              </RadialGradient>
+              <RadialGradient id="garm1" cx="50%" cy="50%" r="50%">
+                <Stop offset="0" stopColor={ARM_COLORS[1]} stopOpacity={0.32} />
+                <Stop offset="1" stopColor={ARM_COLORS[1]} stopOpacity={0} />
+              </RadialGradient>
+            </Defs>
+            <Circle cx={DISC_R + 170} cy={DISC_R - 120} r={300} fill="url(#garm0)" opacity={filter === 2 ? 0.3 : 1} />
+            <Circle cx={DISC_R - 170} cy={DISC_R + 120} r={300} fill="url(#garm1)" opacity={filter === 1 ? 0.3 : 1} />
+            <Circle cx={DISC_R} cy={DISC_R} r={260} fill="url(#gcore)" />
+            {disc.map((b, k) => {
+              const dim = (filter === 1 && b.arm === 1) || (filter === 2 && b.arm === 0) ? 0.25 : 1;
+              return <Path key={k} d={b.d} fill={b.color} fillOpacity={(b.big ? 0.75 : 0.5) * dim} />;
+            })}
+          </Svg>
+        </Animated.View>
+
+        {/* constellation lines */}
+        {model.edges.map((e, k) => {
+          const hot = selected !== null && (e.a === selected || e.b === selected);
+          const faint = dimmedJS(e.a) && dimmedJS(e.b);
+          const alpha = (hot ? 0.85 : selected !== null ? 0.1 : e.implicit ? 0.2 : 0.38) * (faint ? 0.3 : 1);
+          return (
+            <Edge key={`e${k}`} a={e.a} b={e.b} data={nodeData} cam={cam} W={W} H={H} focal={focal}
+              color={hot ? '#F6EBD6' : ARM_COLORS[nodeData.nt[e.a]]} alpha={alpha} thick={hot ? 1.6 : e.implicit ? 0.7 : 1} />
+          );
+        })}
+
+        {/* artists */}
+        {model.nodes.map((n, i) => (
+          <StarNode key={n.id} i={i} data={nodeData} cam={cam} W={W} H={H} focal={focal}
+            color={ARM_COLORS[nodeData.nt[i]]} dim={dimmedJS(i) ? 0.25 : selected !== null && selected !== i ? 0.65 : 1}
+            selected={selected === i} clock={clock} />
+        ))}
+
         {labelSet.map((i) =>
           model.nodes[i] ? (
-            <StarLabel key={model.nodes[i].id} i={i} name={model.nodes[i].name} data={nodeData} cam={cam} sel={sel} filt={filt} W={W} H={H} focal={focal} />
+            <StarLabel key={`l${model.nodes[i].id}`} i={i} name={model.nodes[i].name} data={nodeData} cam={cam} sel={sel} filt={filt} W={W} H={H} focal={focal} />
           ) : null,
         )}
         {selected !== null
@@ -345,18 +297,69 @@ export const GalaxyView = forwardRef<GalaxyHandle, Props>(function GalaxyView({ 
   );
 });
 
+function StarNode({ i, data, cam, W, H, focal, color, dim, selected, clock }: any) {
+  const style = useAnimatedStyle(() => {
+    const zm = camZoom(cam);
+    const q = project(data.nx[i], data.ny[i], data.nz[i], cam.yaw.value + cam.spin.value, cam.pitch.value, zm, cam.fx.value, cam.fy.value, cam.fz.value, W, H, focal);
+    if (q[3] < 0) return { opacity: 0, transform: [{ translateX: -999 }, { translateY: -999 }] };
+    const r = data.ns[i] * q[2] * (0.4 + 0.6 * cam.intro.value);
+    const k = Math.max(0.12, (r * 4.4) / NODE_BASE);
+    const tw = 0.85 + 0.15 * Math.sin(clock.value * 2 + i * 1.7);
+    return {
+      opacity: dim * tw,
+      transform: [{ translateX: q[0] - NODE_BASE / 2 }, { translateY: q[1] - NODE_BASE / 2 }, { scale: k }],
+    };
+  });
+  const ring = useAnimatedStyle(() => {
+    const p = (clock.value * 0.6) % 1;
+    return { opacity: selected ? 0.7 * (1 - p) : 0, transform: [{ scale: 0.8 + p * 1.2 }] };
+  });
+  return (
+    <Animated.View pointerEvents="none" style={[styles.node, style]}>
+      <View style={[styles.halo, { backgroundColor: color }]} />
+      <View style={[styles.halo2, { backgroundColor: color }]} />
+      <View style={[styles.core, { backgroundColor: color }]} />
+      <View style={styles.heart} />
+      <Animated.View style={[styles.ring, ring]} />
+    </Animated.View>
+  );
+}
+
+function Edge({ a, b, data, cam, W, H, focal, color, alpha, thick }: any) {
+  const style = useAnimatedStyle(() => {
+    const zm = camZoom(cam);
+    const yawV = cam.yaw.value + cam.spin.value;
+    const p = project(data.nx[a], data.ny[a], data.nz[a], yawV, cam.pitch.value, zm, cam.fx.value, cam.fy.value, cam.fz.value, W, H, focal);
+    const q = project(data.nx[b], data.ny[b], data.nz[b], yawV, cam.pitch.value, zm, cam.fx.value, cam.fy.value, cam.fz.value, W, H, focal);
+    if (p[3] < 0 || q[3] < 0) return { opacity: 0 };
+    const dx = q[0] - p[0], dy = q[1] - p[1];
+    const len = Math.max(0.5, Math.hypot(dx, dy));
+    return {
+      opacity: alpha * cam.intro.value,
+      transform: [
+        { translateX: (p[0] + q[0]) / 2 - 0.5 },
+        { translateY: (p[1] + q[1]) / 2 - thick / 2 },
+        { rotate: `${Math.atan2(dy, dx)}rad` },
+        { scaleX: len },
+      ],
+    };
+  }, [alpha, thick]);
+  return <Animated.View pointerEvents="none" style={[{ position: 'absolute', left: 0, top: 0, width: 1, height: thick, backgroundColor: color }, style]} />;
+}
+
 function StarLabel({ i, name, data, cam, sel, filt, W, H, focal }: any) {
   const style = useAnimatedStyle(() => {
-    const q = project(data.nx[i], data.ny[i], data.nz[i], cam.yaw.value + cam.spin.value, cam.pitch.value, cam.zoom.value, cam.fx.value, cam.fy.value, cam.fz.value, W, H, focal);
+    const zm = camZoom(cam);
+    const q = project(data.nx[i], data.ny[i], data.nz[i], cam.yaw.value + cam.spin.value, cam.pitch.value, zm, cam.fx.value, cam.fy.value, cam.fz.value, W, H, focal);
     if (q[3] < 0) return { opacity: 0, transform: [{ translateX: -999 }, { translateY: -999 }] };
     const isSel = sel.value === i;
     const dim = (filt.value === 1 && data.nt[i] !== 0) || (filt.value === 2 && data.nt[i] !== 1);
-    const near = Math.min(1, Math.max(0, (q[2] - 0.55) * 1.6));
-    const op = isSel ? 1 : (sel.value >= 0 ? 0.55 : 0.85) * near * (dim ? 0.2 : 1);
+    const near = Math.min(1, Math.max(0, (q[2] - 0.5) * 1.6));
+    const op = isSel ? 1 : (sel.value >= 0 ? 0.6 : 0.92) * near * (dim ? 0.2 : 1) * cam.intro.value;
     const r = data.ns[i] * q[2];
     return {
       opacity: op,
-      transform: [{ translateX: q[0] - 80 }, { translateY: q[1] + r + 6 }, { scale: isSel ? 1.15 : 0.9 + near * 0.15 }],
+      transform: [{ translateX: q[0] - 80 }, { translateY: q[1] + r + 6 }, { scale: isSel ? 1.15 : 0.92 + near * 0.15 }],
     };
   });
   return (
@@ -368,28 +371,39 @@ function StarLabel({ i, name, data, cam, sel, filt, W, H, focal }: any) {
 
 function SatLabel({ k, title, s, data, cam, clock, W, H, focal }: any) {
   const style = useAnimatedStyle(() => {
+    const zm = camZoom(cam);
     const R = data.ns[s] * 2.4 + 10 + k * 7;
     const th = clock.value * (0.55 - k * 0.04) + k * 2.1;
-    const q = project(data.nx[s] + Math.cos(th) * R, data.ny[s], data.nz[s] + Math.sin(th) * R, cam.yaw.value + cam.spin.value, cam.pitch.value, cam.zoom.value, cam.fx.value, cam.fy.value, cam.fz.value, W, H, focal);
+    const q = project(data.nx[s] + Math.cos(th) * R, data.ny[s], data.nz[s] + Math.sin(th) * R, cam.yaw.value + cam.spin.value, cam.pitch.value, zm, cam.fx.value, cam.fy.value, cam.fz.value, W, H, focal);
     if (q[3] < 0) return { opacity: 0 };
-    return { opacity: Math.min(0.85, Math.max(0, (cam.zoom.value - 1.4) * 0.8)), transform: [{ translateX: q[0] - 70 }, { translateY: q[1] - 22 }] };
+    return { opacity: Math.min(0.9, Math.max(0, (cam.zoom.value - 1.4) * 0.8)), transform: [{ translateX: q[0] - 70 }, { translateY: q[1] - 3 }] };
   });
   return (
-    <Animated.Text pointerEvents="none" numberOfLines={1} style={[styles.sat, style]}>
-      {title}
-    </Animated.Text>
+    <Animated.View pointerEvents="none" style={[styles.satWrap, style]}>
+      <View style={styles.satDot} />
+      <Animated.Text numberOfLines={1} style={styles.sat}>{title}</Animated.Text>
+    </Animated.View>
   );
 }
 
+const B = NODE_BASE;
 const styles = StyleSheet.create({
+  node: { position: 'absolute', left: 0, top: 0, width: B, height: B, alignItems: 'center', justifyContent: 'center' },
+  halo: { position: 'absolute', width: B, height: B, borderRadius: B / 2, opacity: 0.16 },
+  halo2: { position: 'absolute', width: B * 0.62, height: B * 0.62, borderRadius: B * 0.31, opacity: 0.32 },
+  core: { position: 'absolute', width: B * 0.46, height: B * 0.46, borderRadius: B * 0.23, opacity: 0.98 },
+  heart: { position: 'absolute', width: B * 0.18, height: B * 0.18, borderRadius: B * 0.09, backgroundColor: '#FFFDF8' },
+  ring: { position: 'absolute', width: B * 0.9, height: B * 0.9, borderRadius: B * 0.45, borderWidth: 1.5, borderColor: '#F6EBD6' },
   label: {
     position: 'absolute', left: 0, top: 0, width: 160, textAlign: 'center',
-    color: '#EFE9DF', fontFamily: F.regular, fontSize: 11.5,
-    textShadowColor: 'rgba(0,0,0,0.9)', textShadowRadius: 6,
+    color: '#F4EEE3', fontFamily: F.medium, fontSize: 12.5,
+    textShadowColor: 'rgba(0,0,0,0.95)', textShadowRadius: 6,
   },
+  satWrap: { position: 'absolute', left: 0, top: 0, width: 140, alignItems: 'center' },
+  satDot: { width: 5, height: 5, borderRadius: 3, backgroundColor: '#F6EFE4', marginBottom: 2 },
   sat: {
-    position: 'absolute', left: 0, top: 0, width: 140, textAlign: 'center',
-    color: '#D9CFBF', fontFamily: F.light, fontSize: 10,
+    width: 140, textAlign: 'center',
+    color: '#E4DACA', fontFamily: F.regular, fontSize: 11,
     textShadowColor: 'rgba(0,0,0,0.9)', textShadowRadius: 5,
   },
 });

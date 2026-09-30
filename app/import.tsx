@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { TermehProvider } from '@/src/motifs/Termeh';
 import { ScrollView, View } from 'react-native';
 import { router } from 'expo-router';
 import * as DocumentPicker from 'expo-document-picker';
@@ -44,6 +45,7 @@ export default function ImportScreen() {
   const overall = prog ? (prog.index + prog.fraction) / prog.total : 0;
 
   return (
+    <TermehProvider pattern="sarv">
     <View style={{ flex: 1 }}>
       <Ambient intensity={0.7} />
       <Header title="وارد کردن موسیقی" />
@@ -109,5 +111,6 @@ export default function ImportScreen() {
         ) : null}
       </ScrollView>
     </View>
+    </TermehProvider>
   );
 }

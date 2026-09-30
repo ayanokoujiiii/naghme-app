@@ -52,5 +52,5 @@ export function CreditsEditor({ value, onChange, artists, defaultRole = 'vocalis
 
 const styles = StyleSheet.create({
   item: { paddingVertical: 8, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: C.line },
-  inst: { color: C.accent, fontFamily: F.regular, fontSize: 11.5, paddingVertical: 0, minWidth: 90, textAlign: 'right' },
+  inst: { color: C.accent, fontFamily: F.regular, fontSize: 12.5, paddingVertical: 0, minWidth: 90, textAlign: 'right' },
 });

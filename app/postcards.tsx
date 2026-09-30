@@ -1,4 +1,5 @@
 import React from 'react';
+import { TermehProvider } from '@/src/motifs/Termeh';
 import { Alert, Dimensions, ScrollView, View } from 'react-native';
 import { router } from 'expo-router';
 import { Image } from 'expo-image';
@@ -15,6 +16,7 @@ export default function PostcardsScreen() {
   const cards = useData(listPostcards, []);
   const w = (Dimensions.get('window').width - 44) / 2;
   return (
+    <TermehProvider pattern="gol">
     <View style={{ flex: 1 }}>
       <Ambient intensity={0.6} />
       <Header title="کارت‌پستال‌ها" subtitle="عکس‌نوشته‌های تو" right={<IconBtn name="plus" filled onPress={() => router.push('/postcard')} label="کارت تازه" />} />
@@ -36,5 +38,6 @@ export default function PostcardsScreen() {
         </ScrollView>
       )}
     </View>
+    </TermehProvider>
   );
 }
